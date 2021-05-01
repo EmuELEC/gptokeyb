@@ -30,8 +30,7 @@
 * DONE: Xbox360 mode: Fix triggers so that they report from 0 to 255 like real Xbox triggers
 *       Xbox360 mode: Figure out why the axis are not correctly labeled?  SDL_CONTROLLER_AXIS_RIGHTX / SDL_CONTROLLER_AXIS_RIGHTY / SDL_CONTROLLER_AXIS_TRIGGERLEFT / SDL_CONTROLLER_AXIS_TRIGGERRIGHT
 *       Keyboard mode: Add a config file option to load mappings from.
-* 
-* TODO: add L2/R2 triggers
+*       add L2/R2 triggers
 * 
 * Spaghetti code incoming, beware :)
 */
@@ -121,6 +120,8 @@ struct
   int current_left_analog_y = 0;
   int current_right_analog_x = 0;
   int current_right_analog_y = 0;
+  int current_left_trigger = 0;
+  int current_right_trigger = 0;
   bool back_pressed = false;
   bool start_pressed = false;
   bool left_analog_was_up = false;
@@ -131,6 +132,8 @@ struct
   bool right_analog_was_down = false;
   bool right_analog_was_left = false;
   bool right_analog_was_right = false;
+  bool left_trigger_was_pressed = false;
+  bool right_trigger_was_pressed = false;
 } state;
 
 struct
@@ -164,8 +167,12 @@ struct
   short right_analog_left = KEY_LEFT;
   short right_analog_right = KEY_RIGHT;
 
+  short left_trigger = KEY_HOME;
+  short right_trigger = KEY_END;
+
   int deadzone_y = 15000;
   int deadzone_x = 15000;
+  int deadzone_triggers = 3000;
 } config;
 
 // convert ASCII chars to key codes
@@ -461,10 +468,16 @@ void readConfigFile(const char* config_file)
       config.right_analog_left = char_to_keycode(co.value);
     } else if (strcmp(co.key, "right_analog_right") == 0) {
       config.right_analog_right = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "left_trigger") == 0) {
+      config.left_trigger = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "right_trigger") == 0) {
+      config.right_trigger = char_to_keycode(co.value);
     } else if (strcmp(co.key, "deadzone_y") == 0) {
       config.deadzone_y = atoi(co.value);
     } else if (strcmp(co.key, "deadzone_x") == 0) {
       config.deadzone_x = atoi(co.value);
+    } else if (strcmp(co.key, "deadzone_triggers") == 0) {
+      config.deadzone_triggers = atoi(co.value);
     }
   }
 }
@@ -822,6 +835,14 @@ bool handleEvent(const SDL_Event& event)
             state.current_right_analog_y =
               applyDeadzone(event.caxis.value, config.deadzone_y);
             break;
+
+          case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
+            state.current_left_trigger = event.caxis.value;
+            break;
+
+          case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
+            state.current_right_trigger = event.caxis.value;
+            break;
         }
 
         // fake mouse
@@ -866,6 +887,15 @@ bool handleEvent(const SDL_Event& event)
             state.right_analog_was_right,
             config.right_analog_right);
         }
+
+        handleAnalogTrigger(
+          state.current_left_trigger > config.deadzone_triggers,
+          state.left_trigger_was_pressed,
+          config.left_trigger);
+        handleAnalogTrigger(
+          state.current_right_trigger > config.deadzone_triggers,
+          state.right_trigger_was_pressed,
+          config.right_trigger);
       }
       break;
     case SDL_CONTROLLERDEVICEADDED:
