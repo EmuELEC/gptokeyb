@@ -160,6 +160,307 @@ bool right_analog_was_right = false;
 int deadzone_y = 15000;
 int deadzone_x = 15000;
 
+// convert ASCII chars to key codes
+short char_to_keycode(const char* str)
+{
+  short keycode;
+
+  // arrow keys
+  if (strcmp(str, "up") == 0)
+    keycode = KEY_UP;
+  else if (strcmp(str, "down") == 0)
+    keycode = KEY_DOWN;
+  else if (strcmp(str, "left") == 0)
+    keycode = KEY_LEFT;
+  else if (strcmp(str, "right") == 0)
+    keycode = KEY_RIGHT;
+
+  // special keys
+  else if (strcmp(str, "mouse_left") == 0)
+    keycode = BTN_LEFT;
+  else if (strcmp(str, "mouse_right") == 0)
+    keycode = BTN_RIGHT;
+  else if (strcmp(str, "space") == 0)
+    keycode = KEY_SPACE;
+  else if (strcmp(str, "esc") == 0)
+    keycode = KEY_ESC;
+  else if (strcmp(str, "end") == 0)
+    keycode = KEY_END;
+  else if (strcmp(str, "home") == 0)
+    keycode = KEY_HOME;
+  else if (strcmp(str, "shift") == 0)
+    keycode = KEY_LEFTSHIFT;
+  else if (strcmp(str, "leftshift") == 0)
+    keycode = KEY_LEFTSHIFT;
+  else if (strcmp(str, "rightshift") == 0)
+    keycode = KEY_RIGHTSHIFT;
+  else if (strcmp(str, "ctrl") == 0)
+    keycode = KEY_LEFTCTRL;
+  else if (strcmp(str, "leftctrl") == 0)
+    keycode = KEY_LEFTCTRL;
+  else if (strcmp(str, "rightctrl") == 0)
+    keycode = KEY_RIGHTCTRL;
+  else if (strcmp(str, "alt") == 0)
+    keycode = KEY_LEFTALT;
+  else if (strcmp(str, "leftalt") == 0)
+    keycode = KEY_LEFTALT;
+  else if (strcmp(str, "rightalt") == 0)
+    keycode = KEY_RIGHTALT;
+  else if (strcmp(str, "backspace") == 0)
+    keycode = KEY_BACKSPACE;
+  else if (strcmp(str, "enter") == 0)
+    keycode = KEY_ENTER;
+  else if (strcmp(str, "pageup") == 0)
+    keycode = KEY_PAGEUP;
+  else if (strcmp(str, "pagedown") == 0)
+    keycode = KEY_PAGEDOWN;
+  else if (strcmp(str, "insert") == 0)
+    keycode = KEY_INSERT;
+  else if (strcmp(str, "delete") == 0)
+    keycode = KEY_DELETE;
+  else if (strcmp(str, "capslock") == 0)
+    keycode = KEY_CAPSLOCK;
+  else if (strcmp(str, "tab") == 0)
+    keycode = KEY_TAB;
+
+  // normal keyboard
+  else if (strcmp(str, "a") == 0)
+    keycode = KEY_A;
+  else if (strcmp(str, "b") == 0)
+    keycode = KEY_B;
+  else if (strcmp(str, "c") == 0)
+    keycode = KEY_C;
+  else if (strcmp(str, "d") == 0)
+    keycode = KEY_D;
+  else if (strcmp(str, "e") == 0)
+    keycode = KEY_E;
+  else if (strcmp(str, "f") == 0)
+    keycode = KEY_F;
+  else if (strcmp(str, "g") == 0)
+    keycode = KEY_G;
+  else if (strcmp(str, "h") == 0)
+    keycode = KEY_H;
+  else if (strcmp(str, "i") == 0)
+    keycode = KEY_I;
+  else if (strcmp(str, "j") == 0)
+    keycode = KEY_J;
+  else if (strcmp(str, "k") == 0)
+    keycode = KEY_K;
+  else if (strcmp(str, "l") == 0)
+    keycode = KEY_L;
+  else if (strcmp(str, "m") == 0)
+    keycode = KEY_M;
+  else if (strcmp(str, "n") == 0)
+    keycode = KEY_N;
+  else if (strcmp(str, "o") == 0)
+    keycode = KEY_O;
+  else if (strcmp(str, "p") == 0)
+    keycode = KEY_P;
+  else if (strcmp(str, "q") == 0)
+    keycode = KEY_Q;
+  else if (strcmp(str, "r") == 0)
+    keycode = KEY_R;
+  else if (strcmp(str, "s") == 0)
+    keycode = KEY_S;
+  else if (strcmp(str, "t") == 0)
+    keycode = KEY_T;
+  else if (strcmp(str, "u") == 0)
+    keycode = KEY_U;
+  else if (strcmp(str, "v") == 0)
+    keycode = KEY_V;
+  else if (strcmp(str, "w") == 0)
+    keycode = KEY_W;
+  else if (strcmp(str, "x") == 0)
+    keycode = KEY_X;
+  else if (strcmp(str, "y") == 0)
+    keycode = KEY_Y;
+  else if (strcmp(str, "z") == 0)
+    keycode = KEY_Z;
+
+  else if (strcmp(str, "1") == 0)
+    keycode = KEY_1;
+  else if (strcmp(str, "2") == 0)
+    keycode = KEY_2;
+  else if (strcmp(str, "3") == 0)
+    keycode = KEY_3;
+  else if (strcmp(str, "4") == 0)
+    keycode = KEY_4;
+  else if (strcmp(str, "5") == 0)
+    keycode = KEY_5;
+  else if (strcmp(str, "6") == 0)
+    keycode = KEY_6;
+  else if (strcmp(str, "7") == 0)
+    keycode = KEY_7;
+  else if (strcmp(str, "8") == 0)
+    keycode = KEY_8;
+  else if (strcmp(str, "9") == 0)
+    keycode = KEY_9;
+  else if (strcmp(str, "0") == 0)
+    keycode = KEY_0;
+
+  else if (strcmp(str, "f1") == 0)
+    keycode = KEY_F1;
+  else if (strcmp(str, "f2") == 0)
+    keycode = KEY_F2;
+  else if (strcmp(str, "f3") == 0)
+    keycode = KEY_F3;
+  else if (strcmp(str, "f4") == 0)
+    keycode = KEY_F4;
+  else if (strcmp(str, "f5") == 0)
+    keycode = KEY_F5;
+  else if (strcmp(str, "f6") == 0)
+    keycode = KEY_F6;
+  else if (strcmp(str, "f7") == 0)
+    keycode = KEY_F7;
+  else if (strcmp(str, "f8") == 0)
+    keycode = KEY_F8;
+  else if (strcmp(str, "f9") == 0)
+    keycode = KEY_F9;
+  else if (strcmp(str, "f10") == 0)
+    keycode = KEY_F10;
+
+  else if (strcmp(str, "@") == 0)
+    keycode = KEY_2; // with SHIFT
+  else if (strcmp(str, "#") == 0)
+    keycode = KEY_3; // with SHIFT
+  //else if (strcmp(str, "€") == 0) keycode = KEY_5; // with ALTGR; not ASCII
+  else if (strcmp(str, "%") == 0)
+    keycode = KEY_5; // with SHIFT
+  else if (strcmp(str, "&") == 0)
+    keycode = KEY_7; // with SHIFT
+  else if (strcmp(str, "*") == 0)
+    keycode = KEY_8; // with SHIFT; alternative is KEY_KPASTERISK
+  else if (strcmp(str, "-") == 0)
+    keycode = KEY_MINUS; // alternative is KEY_KPMINUS
+  else if (strcmp(str, "+") == 0)
+    keycode = KEY_EQUAL; // with SHIFT; alternative is KEY_KPPLUS
+  else if (strcmp(str, "(") == 0)
+    keycode = KEY_9; // with SHIFT
+  else if (strcmp(str, ")") == 0)
+    keycode = KEY_0; // with SHIFT
+
+  else if (strcmp(str, "!") == 0)
+    keycode = KEY_1; // with SHIFT
+  else if (strcmp(str, "\"") == 0)
+    keycode = KEY_APOSTROPHE; // with SHIFT, dead key
+  else if (strcmp(str, "\'") == 0)
+    keycode = KEY_APOSTROPHE; // dead key
+  else if (strcmp(str, ":") == 0)
+    keycode = KEY_SEMICOLON; // with SHIFT
+  else if (strcmp(str, ";") == 0)
+    keycode = KEY_SEMICOLON;
+  else if (strcmp(str, "/") == 0)
+    keycode = KEY_SLASH;
+  else if (strcmp(str, "?") == 0)
+    keycode = KEY_SLASH; // with SHIFT
+  else if (strcmp(str, ".") == 0)
+    keycode = KEY_DOT;
+  else if (strcmp(str, ",") == 0)
+    keycode = KEY_COMMA;
+
+  // special chars
+  else if (strcmp(str, "~") == 0)
+    keycode = KEY_GRAVE; // with SHIFT, dead key
+  else if (strcmp(str, "`") == 0)
+    keycode = KEY_GRAVE; // dead key
+  else if (strcmp(str, "|") == 0)
+    keycode = KEY_BACKSLASH; // with SHIFT
+  else if (strcmp(str, "{") == 0)
+    keycode = KEY_LEFTBRACE; // with SHIFT
+  else if (strcmp(str, "}") == 0)
+    keycode = KEY_RIGHTBRACE; // with SHIFT
+  else if (strcmp(str, "$") == 0)
+    keycode = KEY_4; // with SHIFT
+  else if (strcmp(str, "^") == 0)
+    keycode = KEY_6; // with SHIFT, dead key
+  else if (strcmp(str, "_") == 0)
+    keycode = KEY_MINUS; // with SHIFT
+  else if (strcmp(str, "=") == 0)
+    keycode = KEY_EQUAL;
+  else if (strcmp(str, "[") == 0)
+    keycode = KEY_LEFTBRACE;
+  else if (strcmp(str, "]") == 0)
+    keycode = KEY_RIGHTBRACE;
+  else if (strcmp(str, "\\") == 0)
+    keycode = KEY_BACKSLASH;
+  else if (strcmp(str, "<") == 0)
+    keycode = KEY_COMMA; // with SHIFT
+  else if (strcmp(str, ">") == 0)
+    keycode = KEY_DOT; // with SHIFT
+
+  return keycode;
+}
+
+void readConfigFile(const char* config_file)
+{
+  const auto parsedConfig = parseConfigFile(config_file);
+  for (const auto& co : parsedConfig) {
+    if (strcmp(co.key, "back") == 0) {
+      back = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "guide") == 0) {
+      start = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "start") == 0) {
+      start = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "a") == 0) {
+      a = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "b") == 0) {
+      b = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "x") == 0) {
+      x = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "y") == 0) {
+      y = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "l1") == 0) {
+      l1 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "l2") == 0) {
+      l2 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "l3") == 0) {
+      l3 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "r1") == 0) {
+      r1 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "r2") == 0) {
+      r2 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "r3") == 0) {
+      r3 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "up") == 0) {
+      up = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "down") == 0) {
+      down = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "left") == 0) {
+      left = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "right") == 0) {
+      right = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "left_analog_up") == 0) {
+      if (strcmp(co.value, "mouse_movement_up") == 0) {
+        left_analog_mouse = 1;
+      } else {
+        left_analog_up = char_to_keycode(co.value);
+      }
+    } else if (strcmp(co.key, "left_analog_down") == 0) {
+      left_analog_down = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "left_analog_left") == 0) {
+      left_analog_left = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "left_analog_right") == 0) {
+      left_analog_right = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "right_analog_up") == 0) {
+      if (strcmp(co.value, "mouse_movement_up") == 0) {
+        right_analog_mouse = 1;
+      } else {
+        right_analog_up = char_to_keycode(co.value);
+      }
+    } else if (strcmp(co.key, "right_analog_down") == 0) {
+      right_analog_down = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "right_analog_left") == 0) {
+      right_analog_left = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "right_analog_right") == 0) {
+      right_analog_right = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "deadzone_y") == 0) {
+      deadzone_y = atoi(co.value);
+    } else if (strcmp(co.key, "deadzone_x") == 0) {
+      deadzone_x = atoi(co.value);
+    }
+  }
+}
+
 int current_left_analog_x = 0;
 int current_left_analog_y = 0;
 int current_right_analog_x = 0;
@@ -586,237 +887,6 @@ bool handleEvent(const SDL_Event& event)
   return true;
 }
 
-// convert ASCII chars to key codes
-short char_to_keycode(const char* str)
-{
-  short keycode;
-
-  // arrow keys
-  if (strcmp(str, "up") == 0)
-    keycode = KEY_UP;
-  else if (strcmp(str, "down") == 0)
-    keycode = KEY_DOWN;
-  else if (strcmp(str, "left") == 0)
-    keycode = KEY_LEFT;
-  else if (strcmp(str, "right") == 0)
-    keycode = KEY_RIGHT;
-
-  // special keys
-  else if (strcmp(str, "mouse_left") == 0)
-    keycode = BTN_LEFT;
-  else if (strcmp(str, "mouse_right") == 0)
-    keycode = BTN_RIGHT;
-  else if (strcmp(str, "space") == 0)
-    keycode = KEY_SPACE;
-  else if (strcmp(str, "esc") == 0)
-    keycode = KEY_ESC;
-  else if (strcmp(str, "end") == 0)
-    keycode = KEY_END;
-  else if (strcmp(str, "home") == 0)
-    keycode = KEY_HOME;
-  else if (strcmp(str, "shift") == 0)
-    keycode = KEY_LEFTSHIFT;
-  else if (strcmp(str, "leftshift") == 0)
-    keycode = KEY_LEFTSHIFT;
-  else if (strcmp(str, "rightshift") == 0)
-    keycode = KEY_RIGHTSHIFT;
-  else if (strcmp(str, "ctrl") == 0)
-    keycode = KEY_LEFTCTRL;
-  else if (strcmp(str, "leftctrl") == 0)
-    keycode = KEY_LEFTCTRL;
-  else if (strcmp(str, "rightctrl") == 0)
-    keycode = KEY_RIGHTCTRL;
-  else if (strcmp(str, "alt") == 0)
-    keycode = KEY_LEFTALT;
-  else if (strcmp(str, "leftalt") == 0)
-    keycode = KEY_LEFTALT;
-  else if (strcmp(str, "rightalt") == 0)
-    keycode = KEY_RIGHTALT;
-  else if (strcmp(str, "backspace") == 0)
-    keycode = KEY_BACKSPACE;
-  else if (strcmp(str, "enter") == 0)
-    keycode = KEY_ENTER;
-  else if (strcmp(str, "pageup") == 0)
-    keycode = KEY_PAGEUP;
-  else if (strcmp(str, "pagedown") == 0)
-    keycode = KEY_PAGEDOWN;
-  else if (strcmp(str, "insert") == 0)
-    keycode = KEY_INSERT;
-  else if (strcmp(str, "delete") == 0)
-    keycode = KEY_DELETE;
-  else if (strcmp(str, "capslock") == 0)
-    keycode = KEY_CAPSLOCK;
-  else if (strcmp(str, "tab") == 0)
-    keycode = KEY_TAB;
-
-  // normal keyboard
-  else if (strcmp(str, "a") == 0)
-    keycode = KEY_A;
-  else if (strcmp(str, "b") == 0)
-    keycode = KEY_B;
-  else if (strcmp(str, "c") == 0)
-    keycode = KEY_C;
-  else if (strcmp(str, "d") == 0)
-    keycode = KEY_D;
-  else if (strcmp(str, "e") == 0)
-    keycode = KEY_E;
-  else if (strcmp(str, "f") == 0)
-    keycode = KEY_F;
-  else if (strcmp(str, "g") == 0)
-    keycode = KEY_G;
-  else if (strcmp(str, "h") == 0)
-    keycode = KEY_H;
-  else if (strcmp(str, "i") == 0)
-    keycode = KEY_I;
-  else if (strcmp(str, "j") == 0)
-    keycode = KEY_J;
-  else if (strcmp(str, "k") == 0)
-    keycode = KEY_K;
-  else if (strcmp(str, "l") == 0)
-    keycode = KEY_L;
-  else if (strcmp(str, "m") == 0)
-    keycode = KEY_M;
-  else if (strcmp(str, "n") == 0)
-    keycode = KEY_N;
-  else if (strcmp(str, "o") == 0)
-    keycode = KEY_O;
-  else if (strcmp(str, "p") == 0)
-    keycode = KEY_P;
-  else if (strcmp(str, "q") == 0)
-    keycode = KEY_Q;
-  else if (strcmp(str, "r") == 0)
-    keycode = KEY_R;
-  else if (strcmp(str, "s") == 0)
-    keycode = KEY_S;
-  else if (strcmp(str, "t") == 0)
-    keycode = KEY_T;
-  else if (strcmp(str, "u") == 0)
-    keycode = KEY_U;
-  else if (strcmp(str, "v") == 0)
-    keycode = KEY_V;
-  else if (strcmp(str, "w") == 0)
-    keycode = KEY_W;
-  else if (strcmp(str, "x") == 0)
-    keycode = KEY_X;
-  else if (strcmp(str, "y") == 0)
-    keycode = KEY_Y;
-  else if (strcmp(str, "z") == 0)
-    keycode = KEY_Z;
-
-  else if (strcmp(str, "1") == 0)
-    keycode = KEY_1;
-  else if (strcmp(str, "2") == 0)
-    keycode = KEY_2;
-  else if (strcmp(str, "3") == 0)
-    keycode = KEY_3;
-  else if (strcmp(str, "4") == 0)
-    keycode = KEY_4;
-  else if (strcmp(str, "5") == 0)
-    keycode = KEY_5;
-  else if (strcmp(str, "6") == 0)
-    keycode = KEY_6;
-  else if (strcmp(str, "7") == 0)
-    keycode = KEY_7;
-  else if (strcmp(str, "8") == 0)
-    keycode = KEY_8;
-  else if (strcmp(str, "9") == 0)
-    keycode = KEY_9;
-  else if (strcmp(str, "0") == 0)
-    keycode = KEY_0;
-
-  else if (strcmp(str, "f1") == 0)
-    keycode = KEY_F1;
-  else if (strcmp(str, "f2") == 0)
-    keycode = KEY_F2;
-  else if (strcmp(str, "f3") == 0)
-    keycode = KEY_F3;
-  else if (strcmp(str, "f4") == 0)
-    keycode = KEY_F4;
-  else if (strcmp(str, "f5") == 0)
-    keycode = KEY_F5;
-  else if (strcmp(str, "f6") == 0)
-    keycode = KEY_F6;
-  else if (strcmp(str, "f7") == 0)
-    keycode = KEY_F7;
-  else if (strcmp(str, "f8") == 0)
-    keycode = KEY_F8;
-  else if (strcmp(str, "f9") == 0)
-    keycode = KEY_F9;
-  else if (strcmp(str, "f10") == 0)
-    keycode = KEY_F10;
-
-  else if (strcmp(str, "@") == 0)
-    keycode = KEY_2; // with SHIFT
-  else if (strcmp(str, "#") == 0)
-    keycode = KEY_3; // with SHIFT
-  //else if (strcmp(str, "€") == 0) keycode = KEY_5; // with ALTGR; not ASCII
-  else if (strcmp(str, "%") == 0)
-    keycode = KEY_5; // with SHIFT
-  else if (strcmp(str, "&") == 0)
-    keycode = KEY_7; // with SHIFT
-  else if (strcmp(str, "*") == 0)
-    keycode = KEY_8; // with SHIFT; alternative is KEY_KPASTERISK
-  else if (strcmp(str, "-") == 0)
-    keycode = KEY_MINUS; // alternative is KEY_KPMINUS
-  else if (strcmp(str, "+") == 0)
-    keycode = KEY_EQUAL; // with SHIFT; alternative is KEY_KPPLUS
-  else if (strcmp(str, "(") == 0)
-    keycode = KEY_9; // with SHIFT
-  else if (strcmp(str, ")") == 0)
-    keycode = KEY_0; // with SHIFT
-
-  else if (strcmp(str, "!") == 0)
-    keycode = KEY_1; // with SHIFT
-  else if (strcmp(str, "\"") == 0)
-    keycode = KEY_APOSTROPHE; // with SHIFT, dead key
-  else if (strcmp(str, "\'") == 0)
-    keycode = KEY_APOSTROPHE; // dead key
-  else if (strcmp(str, ":") == 0)
-    keycode = KEY_SEMICOLON; // with SHIFT
-  else if (strcmp(str, ";") == 0)
-    keycode = KEY_SEMICOLON;
-  else if (strcmp(str, "/") == 0)
-    keycode = KEY_SLASH;
-  else if (strcmp(str, "?") == 0)
-    keycode = KEY_SLASH; // with SHIFT
-  else if (strcmp(str, ".") == 0)
-    keycode = KEY_DOT;
-  else if (strcmp(str, ",") == 0)
-    keycode = KEY_COMMA;
-
-  // special chars
-  else if (strcmp(str, "~") == 0)
-    keycode = KEY_GRAVE; // with SHIFT, dead key
-  else if (strcmp(str, "`") == 0)
-    keycode = KEY_GRAVE; // dead key
-  else if (strcmp(str, "|") == 0)
-    keycode = KEY_BACKSLASH; // with SHIFT
-  else if (strcmp(str, "{") == 0)
-    keycode = KEY_LEFTBRACE; // with SHIFT
-  else if (strcmp(str, "}") == 0)
-    keycode = KEY_RIGHTBRACE; // with SHIFT
-  else if (strcmp(str, "$") == 0)
-    keycode = KEY_4; // with SHIFT
-  else if (strcmp(str, "^") == 0)
-    keycode = KEY_6; // with SHIFT, dead key
-  else if (strcmp(str, "_") == 0)
-    keycode = KEY_MINUS; // with SHIFT
-  else if (strcmp(str, "=") == 0)
-    keycode = KEY_EQUAL;
-  else if (strcmp(str, "[") == 0)
-    keycode = KEY_LEFTBRACE;
-  else if (strcmp(str, "]") == 0)
-    keycode = KEY_RIGHTBRACE;
-  else if (strcmp(str, "\\") == 0)
-    keycode = KEY_BACKSLASH;
-  else if (strcmp(str, "<") == 0)
-    keycode = KEY_COMMA; // with SHIFT
-  else if (strcmp(str, ">") == 0)
-    keycode = KEY_DOT; // with SHIFT
-
-  return keycode;
-}
-
 int main(int argc, char* argv[])
 {
   if (argc > 1) {
@@ -826,7 +896,7 @@ int main(int argc, char* argv[])
       config_mode = true;
       config_file = argv[2];
     } else {
-      kill_mode = argv[1];
+      kill_mode = true;
       AppToKill = argv[2];
     }
   }
@@ -853,73 +923,7 @@ int main(int argc, char* argv[])
 
       // if we are in config mode, read the file
       if (config_mode) {
-        // parse config file
-        const auto parsedConfig = read_config_file(config_file);
-        for (const auto& co : parsedConfig) {
-          if (strcmp(co.key, "back") == 0) {
-            back = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "guide") == 0) {
-            start = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "start") == 0) {
-            start = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "a") == 0) {
-            a = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "b") == 0) {
-            b = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "x") == 0) {
-            x = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "y") == 0) {
-            y = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "l1") == 0) {
-            l1 = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "l2") == 0) {
-            l2 = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "l3") == 0) {
-            l3 = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "r1") == 0) {
-            r1 = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "r2") == 0) {
-            r2 = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "r3") == 0) {
-            r3 = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "up") == 0) {
-            up = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "down") == 0) {
-            down = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "left") == 0) {
-            left = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "right") == 0) {
-            right = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "left_analog_up") == 0) {
-            if (strcmp(co.value, "mouse_movement_up") == 0) {
-              left_analog_mouse = 1;
-            } else {
-              left_analog_up = char_to_keycode(co.value);
-            }
-          } else if (strcmp(co.key, "left_analog_down") == 0) {
-            left_analog_down = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "left_analog_left") == 0) {
-            left_analog_left = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "left_analog_right") == 0) {
-            left_analog_right = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "right_analog_up") == 0) {
-            if (strcmp(co.value, "mouse_movement_up") == 0) {
-              right_analog_mouse = 1;
-            } else {
-              right_analog_up = char_to_keycode(co.value);
-            }
-          } else if (strcmp(co.key, "right_analog_down") == 0) {
-            right_analog_down = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "right_analog_left") == 0) {
-            right_analog_left = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "right_analog_right") == 0) {
-            right_analog_right = char_to_keycode(co.value);
-          } else if (strcmp(co.key, "deadzone_y") == 0) {
-            deadzone_y = atoi(co.value);
-          } else if (strcmp(co.key, "deadzone_x") == 0) {
-            deadzone_x = atoi(co.value);
-          }
-        }
+        readConfigFile(config_file);
       }
     }
     // Create input device into input sub-system
