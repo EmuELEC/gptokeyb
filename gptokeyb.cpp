@@ -406,7 +406,7 @@ void readConfigFile(const char* config_file)
     if (strcmp(co.key, "back") == 0) {
       config.back = char_to_keycode(co.value);
     } else if (strcmp(co.key, "guide") == 0) {
-      config.start = char_to_keycode(co.value);
+      config.guide = char_to_keycode(co.value);
     } else if (strcmp(co.key, "start") == 0) {
       config.start = char_to_keycode(co.value);
     } else if (strcmp(co.key, "a") == 0) {
@@ -757,7 +757,7 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_GUIDE:
-            emitKey(config.r3, is_pressed);
+            emitKey(config.guide, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
