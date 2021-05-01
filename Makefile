@@ -1,5 +1,5 @@
 CXX ?= gcc
-CCFLAGS = -W -Wall `sdl2-config --cflags`
+CCFLAGS = -W -Wall -std=c++11 `sdl2-config --cflags`
 INCLUDES = -I/usr/include/libevdev-1.0
 
 BINARY = gptokeyb

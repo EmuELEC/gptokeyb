@@ -50,62 +50,54 @@
 #include <sstream>
 #include <string.h>
 #include <unistd.h>
+#include <vector>
 
 #include <SDL.h>
 
 #define CONFIG_ARG_MAX_BYTES 128
 
-typedef struct config_option config_option;
-typedef config_option* config_option_t;
-
-struct config_option {
-    config_option_t prev;
-    char key[CONFIG_ARG_MAX_BYTES];
-    char value[CONFIG_ARG_MAX_BYTES];
+struct config_option
+{
+  char key[CONFIG_ARG_MAX_BYTES];
+  char value[CONFIG_ARG_MAX_BYTES];
 };
 
-config_option_t read_config_file(char* path) {
-    FILE* fp;
+std::vector<config_option> parseConfigFile(const char* path)
+{
+  std::vector<config_option> result;
 
-    if ((fp = fopen(path, "r+")) == NULL) {
-        perror("fopen()");
-        return NULL;
-    }
+  FILE* fp;
 
-    config_option_t last_co_addr = NULL;
+  if ((fp = fopen(path, "r+")) == NULL) {
+    perror("fopen()");
+    return result;
+  }
 
-    while(1) {
-        config_option_t co = NULL;
-        if ((co =(config_option_t)calloc(1, sizeof(config_option))) == NULL)
-            continue;
+  while (1) {
+    result.emplace_back();
+    auto& co = result.back();
 
-        memset(co, 0, sizeof(config_option));
-        co->prev = last_co_addr;
+    if (fscanf(fp, "%s = %s", &co.key[0], &co.value[0]) != 2) {
+      if (feof(fp)) {
+        break;
+      }
 
-        if (fscanf(fp, "%s = %s", &co->key[0], &co->value[0]) != 2) {
-            if (feof(fp)) {
-                break;
-            }
-
-            if (co->key[0] == '#') {
-                while (fgetc(fp) != '\n') {
-                    // Do nothing (to move the cursor to the end of the line).
-                }
-                free(co);
-                continue;
-            }
-
-            perror("fscanf()");
-            free(co);
-            continue;
+      if (co.key[0] == '#') {
+        while (fgetc(fp) != '\n') {
+          // Do nothing (to move the cursor to the end of the line).
         }
+        result.pop_back();
+        continue;
+      }
 
-        last_co_addr = co;
+      perror("fscanf()");
+      result.pop_back();
+      continue;
     }
+  }
 
-    return last_co_addr;
+  return result;
 }
-
 
 const int FAKE_MOUSE_SCALE = 512;
 const int FAKE_MOUSE_SPEED = 16;
@@ -595,7 +587,7 @@ bool handleEvent(const SDL_Event& event)
 }
 
 // convert ASCII chars to key codes
-short char_to_keycode(char str[])
+short char_to_keycode(const char* str)
 {
   short keycode;
 
@@ -862,78 +854,70 @@ int main(int argc, char* argv[])
       // if we are in config mode, read the file
       if (config_mode) {
         // parse config file
-        config_option_t co;
-        if ((co = read_config_file(config_file)) != NULL) {
-          while (1) {
-            if (strcmp(co->key, "back") == 0) {
-              back = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "guide") == 0) {
-              start = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "start") == 0) {
-              start = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "a") == 0) {
-              a = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "b") == 0) {
-              b = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "x") == 0) {
-              x = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "y") == 0) {
-              y = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "l1") == 0) {
-              l1 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "l2") == 0) {
-              l2 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "l3") == 0) {
-              l3 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "r1") == 0) {
-              r1 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "r2") == 0) {
-              r2 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "r3") == 0) {
-              r3 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "up") == 0) {
-              up = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "down") == 0) {
-              down = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "left") == 0) {
-              left = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "right") == 0) {
-              right = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "left_analog_up") == 0) {
-              if (strcmp(co->value, "mouse_movement_up") == 0) {
-                left_analog_mouse = 1;
-              } else {
-                left_analog_up = char_to_keycode(co->value);
-              }
-            } else if (strcmp(co->key, "left_analog_down") == 0) {
-              left_analog_down = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "left_analog_left") == 0) {
-              left_analog_left = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "left_analog_right") == 0) {
-              left_analog_right = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "right_analog_up") == 0) {
-              if (strcmp(co->value, "mouse_movement_up") == 0) {
-                right_analog_mouse = 1;
-              } else {
-                right_analog_up = char_to_keycode(co->value);
-              }
-            } else if (strcmp(co->key, "right_analog_down") == 0) {
-              right_analog_down = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "right_analog_left") == 0) {
-              right_analog_left = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "right_analog_right") == 0) {
-              right_analog_right = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "deadzone_y") == 0) {
-              deadzone_y = atoi(co->value);
-            } else if (strcmp(co->key, "deadzone_x") == 0) {
-              deadzone_x = atoi(co->value);
-            }
-
-            if (co->prev != NULL) {
-              co = co->prev;
+        const auto parsedConfig = read_config_file(config_file);
+        for (const auto& co : parsedConfig) {
+          if (strcmp(co.key, "back") == 0) {
+            back = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "guide") == 0) {
+            start = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "start") == 0) {
+            start = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "a") == 0) {
+            a = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "b") == 0) {
+            b = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "x") == 0) {
+            x = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "y") == 0) {
+            y = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "l1") == 0) {
+            l1 = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "l2") == 0) {
+            l2 = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "l3") == 0) {
+            l3 = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "r1") == 0) {
+            r1 = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "r2") == 0) {
+            r2 = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "r3") == 0) {
+            r3 = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "up") == 0) {
+            up = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "down") == 0) {
+            down = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "left") == 0) {
+            left = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "right") == 0) {
+            right = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "left_analog_up") == 0) {
+            if (strcmp(co.value, "mouse_movement_up") == 0) {
+              left_analog_mouse = 1;
             } else {
-              break;
+              left_analog_up = char_to_keycode(co.value);
             }
+          } else if (strcmp(co.key, "left_analog_down") == 0) {
+            left_analog_down = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "left_analog_left") == 0) {
+            left_analog_left = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "left_analog_right") == 0) {
+            left_analog_right = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "right_analog_up") == 0) {
+            if (strcmp(co.value, "mouse_movement_up") == 0) {
+              right_analog_mouse = 1;
+            } else {
+              right_analog_up = char_to_keycode(co.value);
+            }
+          } else if (strcmp(co.key, "right_analog_down") == 0) {
+            right_analog_down = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "right_analog_left") == 0) {
+            right_analog_left = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "right_analog_right") == 0) {
+            right_analog_right = char_to_keycode(co.value);
+          } else if (strcmp(co.key, "deadzone_y") == 0) {
+            deadzone_y = atoi(co.value);
+          } else if (strcmp(co.key, "deadzone_x") == 0) {
+            deadzone_x = atoi(co.value);
           }
         }
       }
