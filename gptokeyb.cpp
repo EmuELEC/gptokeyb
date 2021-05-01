@@ -104,61 +104,69 @@ const int FAKE_MOUSE_SPEED = 16;
 
 static int uinp_fd = -1;
 struct uinput_user_dev uidev;
+
 bool kill_mode = false;
 bool openbor_mode = false;
 bool xbox360_mode = false;
 char* AppToKill;
 bool config_mode = false;
-char* config_file;
-bool back_pressed = false;
-bool start_pressed = false;
-int back_jsdevice;
-int start_jsdevice;
 
-int mouseX = 0;
-int mouseY = 0;
+struct
+{
+  int back_jsdevice;
+  int start_jsdevice;
+  int mouseX = 0;
+  int mouseY = 0;
+  int current_left_analog_x = 0;
+  int current_left_analog_y = 0;
+  int current_right_analog_x = 0;
+  int current_right_analog_y = 0;
+  bool back_pressed = false;
+  bool start_pressed = false;
+  bool left_analog_was_up = false;
+  bool left_analog_was_down = false;
+  bool left_analog_was_left = false;
+  bool left_analog_was_right = false;
+  bool right_analog_was_up = false;
+  bool right_analog_was_down = false;
+  bool right_analog_was_left = false;
+  bool right_analog_was_right = false;
+} state;
 
-short back = KEY_ESC;
-short start = KEY_ENTER;
-short guide = KEY_ENTER;
-short a = KEY_X;
-short b = KEY_Z;
-short x = KEY_C;
-short y = KEY_A;
-short l1 = KEY_RIGHTSHIFT;
-short l2 = BTN_LEFT;
-short l3 = BTN_LEFT;
-short r1 = KEY_LEFTSHIFT;
-short r2 = BTN_RIGHT;
-short r3 = BTN_RIGHT;
-short up = KEY_UP;
-short down = KEY_DOWN;
-short left = KEY_LEFT;
-short right = KEY_RIGHT;
+struct
+{
+  short back = KEY_ESC;
+  short start = KEY_ENTER;
+  short guide = KEY_ENTER;
+  short a = KEY_X;
+  short b = KEY_Z;
+  short x = KEY_C;
+  short y = KEY_A;
+  short l1 = KEY_RIGHTSHIFT;
+  short l2 = BTN_LEFT;
+  short l3 = BTN_LEFT;
+  short r1 = KEY_LEFTSHIFT;
+  short r2 = BTN_RIGHT;
+  short r3 = BTN_RIGHT;
+  short up = KEY_UP;
+  short down = KEY_DOWN;
+  short left = KEY_LEFT;
+  short right = KEY_RIGHT;
 
-int left_analog_mouse = 0;
-int right_analog_mouse = 0;
+  bool left_analog_as_mouse = false;
+  bool right_analog_as_mouse = false;
+  short left_analog_up = KEY_W;
+  short left_analog_down = KEY_S;
+  short left_analog_left = KEY_A;
+  short left_analog_right = KEY_D;
+  short right_analog_up = KEY_END;
+  short right_analog_down = KEY_HOME;
+  short right_analog_left = KEY_LEFT;
+  short right_analog_right = KEY_RIGHT;
 
-short left_analog_up = KEY_W;
-short left_analog_down = KEY_S;
-short left_analog_left = KEY_A;
-short left_analog_right = KEY_D;
-short right_analog_up = KEY_END;
-short right_analog_down = KEY_HOME;
-short right_analog_left = KEY_LEFT;
-short right_analog_right = KEY_RIGHT;
-
-bool left_analog_was_up = false;
-bool left_analog_was_down = false;
-bool left_analog_was_left = false;
-bool left_analog_was_right = false;
-bool right_analog_was_up = false;
-bool right_analog_was_down = false;
-bool right_analog_was_left = false;
-bool right_analog_was_right = false;
-
-int deadzone_y = 15000;
-int deadzone_x = 15000;
+  int deadzone_y = 15000;
+  int deadzone_x = 15000;
+} config;
 
 // convert ASCII chars to key codes
 short char_to_keycode(const char* str)
@@ -396,75 +404,70 @@ void readConfigFile(const char* config_file)
   const auto parsedConfig = parseConfigFile(config_file);
   for (const auto& co : parsedConfig) {
     if (strcmp(co.key, "back") == 0) {
-      back = char_to_keycode(co.value);
+      config.back = char_to_keycode(co.value);
     } else if (strcmp(co.key, "guide") == 0) {
-      start = char_to_keycode(co.value);
+      config.start = char_to_keycode(co.value);
     } else if (strcmp(co.key, "start") == 0) {
-      start = char_to_keycode(co.value);
+      config.start = char_to_keycode(co.value);
     } else if (strcmp(co.key, "a") == 0) {
-      a = char_to_keycode(co.value);
+      config.a = char_to_keycode(co.value);
     } else if (strcmp(co.key, "b") == 0) {
-      b = char_to_keycode(co.value);
+      config.b = char_to_keycode(co.value);
     } else if (strcmp(co.key, "x") == 0) {
-      x = char_to_keycode(co.value);
+      config.x = char_to_keycode(co.value);
     } else if (strcmp(co.key, "y") == 0) {
-      y = char_to_keycode(co.value);
+      config.y = char_to_keycode(co.value);
     } else if (strcmp(co.key, "l1") == 0) {
-      l1 = char_to_keycode(co.value);
+      config.l1 = char_to_keycode(co.value);
     } else if (strcmp(co.key, "l2") == 0) {
-      l2 = char_to_keycode(co.value);
+      config.l2 = char_to_keycode(co.value);
     } else if (strcmp(co.key, "l3") == 0) {
-      l3 = char_to_keycode(co.value);
+      config.l3 = char_to_keycode(co.value);
     } else if (strcmp(co.key, "r1") == 0) {
-      r1 = char_to_keycode(co.value);
+      config.r1 = char_to_keycode(co.value);
     } else if (strcmp(co.key, "r2") == 0) {
-      r2 = char_to_keycode(co.value);
+      config.r2 = char_to_keycode(co.value);
     } else if (strcmp(co.key, "r3") == 0) {
-      r3 = char_to_keycode(co.value);
+      config.r3 = char_to_keycode(co.value);
     } else if (strcmp(co.key, "up") == 0) {
-      up = char_to_keycode(co.value);
+      config.up = char_to_keycode(co.value);
     } else if (strcmp(co.key, "down") == 0) {
-      down = char_to_keycode(co.value);
+      config.down = char_to_keycode(co.value);
     } else if (strcmp(co.key, "left") == 0) {
-      left = char_to_keycode(co.value);
+      config.left = char_to_keycode(co.value);
     } else if (strcmp(co.key, "right") == 0) {
-      right = char_to_keycode(co.value);
+      config.right = char_to_keycode(co.value);
     } else if (strcmp(co.key, "left_analog_up") == 0) {
       if (strcmp(co.value, "mouse_movement_up") == 0) {
-        left_analog_mouse = 1;
+        config.left_analog_as_mouse = true;
       } else {
-        left_analog_up = char_to_keycode(co.value);
+        config.left_analog_up = char_to_keycode(co.value);
       }
     } else if (strcmp(co.key, "left_analog_down") == 0) {
-      left_analog_down = char_to_keycode(co.value);
+      config.left_analog_down = char_to_keycode(co.value);
     } else if (strcmp(co.key, "left_analog_left") == 0) {
-      left_analog_left = char_to_keycode(co.value);
+      config.left_analog_left = char_to_keycode(co.value);
     } else if (strcmp(co.key, "left_analog_right") == 0) {
-      left_analog_right = char_to_keycode(co.value);
+      config.left_analog_right = char_to_keycode(co.value);
     } else if (strcmp(co.key, "right_analog_up") == 0) {
       if (strcmp(co.value, "mouse_movement_up") == 0) {
-        right_analog_mouse = 1;
+        config.right_analog_as_mouse = true;
       } else {
-        right_analog_up = char_to_keycode(co.value);
+        config.right_analog_up = char_to_keycode(co.value);
       }
     } else if (strcmp(co.key, "right_analog_down") == 0) {
-      right_analog_down = char_to_keycode(co.value);
+      config.right_analog_down = char_to_keycode(co.value);
     } else if (strcmp(co.key, "right_analog_left") == 0) {
-      right_analog_left = char_to_keycode(co.value);
+      config.right_analog_left = char_to_keycode(co.value);
     } else if (strcmp(co.key, "right_analog_right") == 0) {
-      right_analog_right = char_to_keycode(co.value);
+      config.right_analog_right = char_to_keycode(co.value);
     } else if (strcmp(co.key, "deadzone_y") == 0) {
-      deadzone_y = atoi(co.value);
+      config.deadzone_y = atoi(co.value);
     } else if (strcmp(co.key, "deadzone_x") == 0) {
-      deadzone_x = atoi(co.value);
+      config.deadzone_x = atoi(co.value);
     }
   }
 }
-
-int current_left_analog_x = 0;
-int current_left_analog_y = 0;
-int current_right_analog_x = 0;
-int current_right_analog_y = 0;
 
 int applyDeadzone(int value, int deadzone)
 {
@@ -613,19 +616,19 @@ bool handleEvent(const SDL_Event& event)
         // Kill mode
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_GUIDE:
-            back_jsdevice = event.cdevice.which;
-            back_pressed = is_pressed;
+            state.back_jsdevice = event.cdevice.which;
+            state.back_pressed = is_pressed;
             break;
 
           case SDL_CONTROLLER_BUTTON_START:
-            start_jsdevice = event.cdevice.which;
-            start_pressed = is_pressed;
+            state.start_jsdevice = event.cdevice.which;
+            state.start_pressed = is_pressed;
             break;
         }
 
-        if (start_pressed && back_pressed) {
+        if (state.start_pressed && state.back_pressed) {
           // printf("Killing: %s\n", AppToKill);
-          if (start_jsdevice == back_jsdevice) {
+          if (state.start_jsdevice == state.back_jsdevice) {
             system((" killall  '" + std::string(AppToKill) + "' ").c_str());
             system("show_splash.sh exit");
             sleep(3);
@@ -706,63 +709,63 @@ bool handleEvent(const SDL_Event& event)
         // Config / default mode
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-            emitKey(left, is_pressed);
+            emitKey(config.left, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_UP:
-            emitKey(up, is_pressed);
+            emitKey(config.up, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-            emitKey(right, is_pressed);
+            emitKey(config.right, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-            emitKey(down, is_pressed);
+            emitKey(config.down, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_A:
-            emitKey(a, is_pressed);
+            emitKey(config.a, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_B:
-            emitKey(b, is_pressed);
+            emitKey(config.b, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_X:
-            emitKey(x, is_pressed);
+            emitKey(config.x, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_Y:
-            emitKey(y, is_pressed);
+            emitKey(config.y, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
-            emitKey(l1, is_pressed);
+            emitKey(config.l1, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-            emitKey(r1, is_pressed);
+            emitKey(config.r1, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_LEFTSTICK:
-            emitKey(l3, is_pressed);
+            emitKey(config.l3, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
-            emitKey(r3, is_pressed);
+            emitKey(config.r3, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_GUIDE:
-            emitKey(r3, is_pressed);
+            emitKey(config.r3, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
-            emitKey(back, is_pressed);
+            emitKey(config.back, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_START:
-            emitKey(start, is_pressed);
+            emitKey(config.start, is_pressed);
             break;
         }
       } //kill mode
@@ -801,59 +804,67 @@ bool handleEvent(const SDL_Event& event)
       } else {
         switch (event.caxis.axis) {
           case SDL_CONTROLLER_AXIS_LEFTX:
-            current_left_analog_x =
-              applyDeadzone(event.caxis.value, deadzone_x);
+            state.current_left_analog_x =
+              applyDeadzone(event.caxis.value, config.deadzone_x);
             break;
 
           case SDL_CONTROLLER_AXIS_LEFTY:
-            current_left_analog_y =
-              applyDeadzone(event.caxis.value, deadzone_y);
+            state.current_left_analog_y =
+              applyDeadzone(event.caxis.value, config.deadzone_y);
             break;
 
           case SDL_CONTROLLER_AXIS_RIGHTX:
-            current_right_analog_x =
-              applyDeadzone(event.caxis.value, deadzone_x);
+            state.current_right_analog_x =
+              applyDeadzone(event.caxis.value, config.deadzone_x);
             break;
 
           case SDL_CONTROLLER_AXIS_RIGHTY:
-            current_right_analog_y =
-              applyDeadzone(event.caxis.value, deadzone_y);
+            state.current_right_analog_y =
+              applyDeadzone(event.caxis.value, config.deadzone_y);
             break;
         }
 
         // fake mouse
-        if (left_analog_mouse == 1) {
-          mouseX = current_left_analog_x / FAKE_MOUSE_SCALE;
-          mouseY = current_left_analog_y / FAKE_MOUSE_SCALE;
-        } else if (right_analog_mouse == 1) {
-          mouseX = current_right_analog_x / FAKE_MOUSE_SCALE;
-          mouseY = current_right_analog_y / FAKE_MOUSE_SCALE;
+        if (config.left_analog_as_mouse) {
+          state.mouseX = state.current_left_analog_x / FAKE_MOUSE_SCALE;
+          state.mouseY = state.current_left_analog_y / FAKE_MOUSE_SCALE;
+        } else if (config.right_analog_as_mouse) {
+          state.mouseX = state.current_right_analog_x / FAKE_MOUSE_SCALE;
+          state.mouseY = state.current_right_analog_y / FAKE_MOUSE_SCALE;
         } else {
           // Analogs trigger keys
           handleAnalogTrigger(
-            current_left_analog_y < 0, left_analog_was_up, left_analog_up);
+            state.current_left_analog_y < 0,
+            state.left_analog_was_up,
+            config.left_analog_up);
           handleAnalogTrigger(
-            current_left_analog_y > 0, left_analog_was_down, left_analog_down);
+            state.current_left_analog_y > 0,
+            state.left_analog_was_down,
+            config.left_analog_down);
           handleAnalogTrigger(
-            current_left_analog_x < 0, left_analog_was_left, left_analog_left);
+            state.current_left_analog_x < 0,
+            state.left_analog_was_left,
+            config.left_analog_left);
           handleAnalogTrigger(
-            current_left_analog_x > 0,
-            left_analog_was_right,
-            left_analog_right);
+            state.current_left_analog_x > 0,
+            state.left_analog_was_right,
+            config.left_analog_right);
           handleAnalogTrigger(
-            current_right_analog_y < 0, right_analog_was_up, right_analog_up);
+            state.current_right_analog_y < 0,
+            state.right_analog_was_up,
+            config.right_analog_up);
           handleAnalogTrigger(
-            current_right_analog_y > 0,
-            right_analog_was_down,
-            right_analog_down);
+            state.current_right_analog_y > 0,
+            state.right_analog_was_down,
+            config.right_analog_down);
           handleAnalogTrigger(
-            current_right_analog_x < 0,
-            right_analog_was_left,
-            right_analog_left);
+            state.current_right_analog_x < 0,
+            state.right_analog_was_left,
+            config.right_analog_left);
           handleAnalogTrigger(
-            current_right_analog_x > 0,
-            right_analog_was_right,
-            right_analog_right);
+            state.current_right_analog_x > 0,
+            state.right_analog_was_right,
+            config.right_analog_right);
         }
       }
       break;
@@ -889,6 +900,8 @@ bool handleEvent(const SDL_Event& event)
 
 int main(int argc, char* argv[])
 {
+  const char* config_file = nullptr;
+
   if (argc > 1) {
     if (strcmp(argv[1], "xbox360") == 0) {
       xbox360_mode = true;
@@ -948,12 +961,12 @@ int main(int argc, char* argv[])
   SDL_Event event;
   bool running = true;
   while (running) {
-    if (mouseX != 0 || mouseY != 0) {
+    if (state.mouseX != 0 || state.mouseY != 0) {
       while (running && SDL_PollEvent(&event)) {
         running = handleEvent(event);
       }
 
-      emitMouseMotion(mouseX, mouseY);
+      emitMouseMotion(state.mouseX, state.mouseY);
       SDL_Delay(FAKE_MOUSE_SPEED);
     } else {
       if (!SDL_WaitEvent(&event)) {
