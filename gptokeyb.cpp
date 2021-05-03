@@ -30,8 +30,7 @@
 * DONE: Xbox360 mode: Fix triggers so that they report from 0 to 255 like real Xbox triggers
 *       Xbox360 mode: Figure out why the axis are not correctly labeled?  SDL_CONTROLLER_AXIS_RIGHTX / SDL_CONTROLLER_AXIS_RIGHTY / SDL_CONTROLLER_AXIS_TRIGGERLEFT / SDL_CONTROLLER_AXIS_TRIGGERRIGHT
 *       Keyboard mode: Add a config file option to load mappings from.
-* 
-* TODO: add L2/R2 triggers
+*       add L2/R2 triggers
 * 
 * Spaghetti code incoming, beware :)
 */
@@ -50,500 +49,134 @@
 #include <sstream>
 #include <string.h>
 #include <unistd.h>
+#include <vector>
 
 #include <SDL.h>
 
-#include "parser.h"
+#define CONFIG_ARG_MAX_BYTES 128
+
+struct config_option
+{
+  char key[CONFIG_ARG_MAX_BYTES];
+  char value[CONFIG_ARG_MAX_BYTES];
+};
+
+std::vector<config_option> parseConfigFile(const char* path)
+{
+  std::vector<config_option> result;
+
+  FILE* fp;
+
+  if ((fp = fopen(path, "r+")) == NULL) {
+    perror("fopen()");
+    return result;
+  }
+
+  while (1) {
+    result.emplace_back();
+    auto& co = result.back();
+
+    if (fscanf(fp, "%s = %s", &co.key[0], &co.value[0]) != 2) {
+      if (feof(fp)) {
+        break;
+      }
+
+      if (co.key[0] == '#') {
+        while (fgetc(fp) != '\n') {
+          // Do nothing (to move the cursor to the end of the line).
+        }
+        result.pop_back();
+        continue;
+      }
+
+      perror("fscanf()");
+      result.pop_back();
+      continue;
+    }
+  }
+
+  return result;
+}
 
 const int FAKE_MOUSE_SCALE = 512;
 const int FAKE_MOUSE_SPEED = 16;
 
 static int uinp_fd = -1;
 struct uinput_user_dev uidev;
+
 bool kill_mode = false;
 bool openbor_mode = false;
 bool xbox360_mode = false;
 char* AppToKill;
 bool config_mode = false;
-char* config_file;
-bool back_pressed = false;
-bool start_pressed = false;
-int back_jsdevice;
-int start_jsdevice;
 
-int mouseX = 0;
-int mouseY = 0;
-
-short back = KEY_ESC;
-short start = KEY_ENTER;
-short guide = KEY_ENTER;
-short a = KEY_X;
-short b = KEY_Z;
-short x = KEY_C;
-short y = KEY_A;
-short l1 = KEY_RIGHTSHIFT;
-short l2 = BTN_LEFT;
-short l3 = BTN_LEFT;
-short r1 = KEY_LEFTSHIFT;
-short r2 = BTN_RIGHT;
-short r3 = BTN_RIGHT;
-short up = KEY_UP;
-short down = KEY_DOWN;
-short left = KEY_LEFT;
-short right = KEY_RIGHT;
-
-int left_analog_mouse = 0;
-int right_analog_mouse = 0;
-
-short left_analog_up = KEY_W;
-short left_analog_down = KEY_S;
-short left_analog_left = KEY_A;
-short left_analog_right = KEY_D;
-short right_analog_up = KEY_END;
-short right_analog_down = KEY_HOME;
-short right_analog_left = KEY_LEFT;
-short right_analog_right = KEY_RIGHT;
-
-bool left_analog_was_up = false;
-bool left_analog_was_down = false;
-bool left_analog_was_left = false;
-bool left_analog_was_right = false;
-bool right_analog_was_up = false;
-bool right_analog_was_down = false;
-bool right_analog_was_left = false;
-bool right_analog_was_right = false;
-
-int deadzone_y = 15000;
-int deadzone_x = 15000;
-
-int current_left_analog_x = 0;
-int current_left_analog_y = 0;
-int current_right_analog_x = 0;
-int current_right_analog_y = 0;
-
-int applyDeadzone(int value, int deadzone)
+struct
 {
-  if (std::abs(value) > deadzone) {
-    return value;
-  } else {
-    return 0;
-  }
-}
+  int back_jsdevice;
+  int start_jsdevice;
+  int mouseX = 0;
+  int mouseY = 0;
+  int current_left_analog_x = 0;
+  int current_left_analog_y = 0;
+  int current_right_analog_x = 0;
+  int current_right_analog_y = 0;
+  int current_left_trigger = 0;
+  int current_right_trigger = 0;
+  bool back_pressed = false;
+  bool start_pressed = false;
+  bool left_analog_was_up = false;
+  bool left_analog_was_down = false;
+  bool left_analog_was_left = false;
+  bool left_analog_was_right = false;
+  bool right_analog_was_up = false;
+  bool right_analog_was_down = false;
+  bool right_analog_was_left = false;
+  bool right_analog_was_right = false;
+  bool left_trigger_was_pressed = false;
+  bool right_trigger_was_pressed = false;
+} state;
 
-void UINPUT_SET_ABS_P(
-  uinput_user_dev* dev,
-  int axis,
-  int min,
-  int max,
-  int fuzz,
-  int flat)
+struct
 {
-  dev->absmax[axis] = max;
-  dev->absmin[axis] = min;
-  dev->absfuzz[axis] = fuzz;
-  dev->absflat[axis] = flat;
-}
+  short back = KEY_ESC;
+  short start = KEY_ENTER;
+  short guide = KEY_ENTER;
+  short a = KEY_X;
+  short b = KEY_Z;
+  short x = KEY_C;
+  short y = KEY_A;
+  short l1 = KEY_RIGHTSHIFT;
+  short l2 = BTN_LEFT;
+  short l3 = BTN_LEFT;
+  short r1 = KEY_LEFTSHIFT;
+  short r2 = BTN_RIGHT;
+  short r3 = BTN_RIGHT;
+  short up = KEY_UP;
+  short down = KEY_DOWN;
+  short left = KEY_LEFT;
+  short right = KEY_RIGHT;
 
-void emit(int type, int code, int val)
-{
-  struct input_event ev;
+  bool left_analog_as_mouse = false;
+  bool right_analog_as_mouse = false;
+  short left_analog_up = KEY_W;
+  short left_analog_down = KEY_S;
+  short left_analog_left = KEY_A;
+  short left_analog_right = KEY_D;
+  short right_analog_up = KEY_END;
+  short right_analog_down = KEY_HOME;
+  short right_analog_left = KEY_LEFT;
+  short right_analog_right = KEY_RIGHT;
 
-  ev.type = type;
-  ev.code = code;
-  ev.value = val;
-  /* timestamp values below are ignored */
-  ev.time.tv_sec = 0;
-  ev.time.tv_usec = 0;
+  short left_trigger = KEY_HOME;
+  short right_trigger = KEY_END;
 
-  write(uinp_fd, &ev, sizeof(ev));
-}
-
-void emitKey(int code, bool is_pressed)
-{
-  emit(EV_KEY, code, is_pressed ? 1 : 0);
-  emit(EV_SYN, SYN_REPORT, 0);
-}
-
-void emitAxisMotion(int code, int value)
-{
-  emit(EV_ABS, code, value);
-  emit(EV_SYN, SYN_REPORT, 0);
-}
-
-void emitMouseMotion(int x, int y)
-{
-  if (x != 0) {
-    emit(EV_REL, REL_X, x);
-  }
-  if (y != 0) {
-    emit(EV_REL, REL_Y, y);
-  }
-
-  if (x != 0 || y != 0) {
-    emit(EV_SYN, SYN_REPORT, 0);
-  }
-}
-
-void handleAnalogTrigger(bool is_triggered, bool& was_triggered, int key)
-{
-  if (is_triggered && !was_triggered) {
-    emitKey(key, true);
-  } else if (!is_triggered && was_triggered) {
-    emitKey(key, false);
-  }
-
-  was_triggered = is_triggered;
-}
-
-void setupFakeKeyboardMouseDevice(uinput_user_dev& device, int fd)
-{
-  strncpy(device.name, "Fake Keyboard", UINPUT_MAX_NAME_SIZE);
-  device.id.vendor = 0x1234;  /* sample vendor */
-  device.id.product = 0x5678; /* sample product */
-
-  for (int i = 0; i < 256; i++) {
-    ioctl(fd, UI_SET_KEYBIT, i);
-  }
-
-  // Keys or Buttons
-  ioctl(fd, UI_SET_EVBIT, EV_KEY);
-  ioctl(fd, UI_SET_EVBIT, EV_SYN);
-
-  // Fake mouse
-  ioctl(fd, UI_SET_EVBIT, EV_REL);
-  ioctl(fd, UI_SET_RELBIT, REL_X);
-  ioctl(fd, UI_SET_RELBIT, REL_Y);
-  ioctl(fd, UI_SET_KEYBIT, BTN_LEFT);
-  ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT);
-}
-
-void setupFakeXbox360Device(uinput_user_dev& device, int fd)
-{
-  strncpy(device.name, "Microsoft X-Box 360 pad", UINPUT_MAX_NAME_SIZE);
-  device.id.vendor = 0x045e;  /* sample vendor */
-  device.id.product = 0x028e; /* sample product */
-
-  if (
-    ioctl(fd, UI_SET_EVBIT, EV_KEY) || ioctl(fd, UI_SET_EVBIT, EV_SYN) ||
-    ioctl(fd, UI_SET_EVBIT, EV_ABS) ||
-    // X-Box 360 pad buttons
-    ioctl(fd, UI_SET_KEYBIT, BTN_A) || ioctl(fd, UI_SET_KEYBIT, BTN_B) ||
-    ioctl(fd, UI_SET_KEYBIT, BTN_X) || ioctl(fd, UI_SET_KEYBIT, BTN_Y) ||
-    ioctl(fd, UI_SET_KEYBIT, BTN_TL) || ioctl(fd, UI_SET_KEYBIT, BTN_TR) ||
-    ioctl(fd, UI_SET_KEYBIT, BTN_THUMBL) ||
-    ioctl(fd, UI_SET_KEYBIT, BTN_THUMBR) ||
-    ioctl(fd, UI_SET_KEYBIT, BTN_SELECT) ||
-    ioctl(fd, UI_SET_KEYBIT, BTN_START) || ioctl(fd, UI_SET_KEYBIT, BTN_MODE) ||
-    // absolute (sticks)
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_LEFTX) ||
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_LEFTY) ||
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_RIGHTX) ||
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_RIGHTY) ||
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_TRIGGERLEFT) ||
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) ||
-    ioctl(fd, UI_SET_ABSBIT, ABS_HAT0X) ||
-    ioctl(fd, UI_SET_ABSBIT, ABS_HAT0Y)) {
-    printf("Failed to configure fake Xbox 360 controller\n");
-    exit(-1);
-  }
-
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_LEFTX, -32768, 32767, 16, 128);
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_LEFTY, -32768, 32767, 16, 128);
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_RIGHTX, -32768, 32767, 16, 128);
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_RIGHTY, -32768, 32767, 16, 128);
-  UINPUT_SET_ABS_P(&device, ABS_HAT0X, -1, 1, 0, 0);
-  UINPUT_SET_ABS_P(&device, ABS_HAT0Y, -1, 1, 0, 0);
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_TRIGGERLEFT, 0, 255, 0, 0);
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, 0, 255, 0, 0);
-}
-
-bool handleEvent(const SDL_Event& event)
-{
-  switch (event.type) {
-    case SDL_CONTROLLERBUTTONDOWN:
-    case SDL_CONTROLLERBUTTONUP: {
-      const bool is_pressed = event.type == SDL_CONTROLLERBUTTONDOWN;
-
-      if (kill_mode) {
-        // Kill mode
-        switch (event.cbutton.button) {
-          case SDL_CONTROLLER_BUTTON_GUIDE:
-            back_jsdevice = event.cdevice.which;
-            back_pressed = is_pressed;
-            break;
-
-          case SDL_CONTROLLER_BUTTON_START:
-            start_jsdevice = event.cdevice.which;
-            start_pressed = is_pressed;
-            break;
-        }
-
-        if (start_pressed && back_pressed) {
-          // printf("Killing: %s\n", AppToKill);
-          if (start_jsdevice == back_jsdevice) {
-            system((" killall  '" + std::string(AppToKill) + "' ").c_str());
-            system("show_splash.sh exit");
-            sleep(3);
-            if (
-              system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) ==
-              0) {
-              printf("Forcefully Killing: %s\n", AppToKill);
-              system(
-                (" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
-            }
-            exit(0);
-          }
-        }
-      } else if (xbox360_mode) {
-        // Fake Xbox360 mode
-        switch (event.cbutton.button) {
-          case SDL_CONTROLLER_BUTTON_A:
-            emitKey(BTN_A, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_B:
-            emitKey(BTN_B, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_X:
-            emitKey(BTN_X, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_Y:
-            emitKey(BTN_Y, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
-            emitKey(BTN_TL, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-            emitKey(BTN_TR, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_LEFTSTICK:
-            emitKey(BTN_THUMBL, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
-            emitKey(BTN_THUMBR, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_BACK: // aka select
-            emitKey(BTN_SELECT, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_GUIDE:
-            emitKey(BTN_MODE, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_START:
-            emitKey(BTN_START, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_UP:
-            emitAxisMotion(ABS_HAT0Y, is_pressed ? -1 : 0);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-            emitAxisMotion(ABS_HAT0Y, is_pressed ? 1 : 0);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-            emitAxisMotion(ABS_HAT0X, is_pressed ? -1 : 0);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-            emitAxisMotion(ABS_HAT0X, is_pressed ? 1 : 0);
-            break;
-        }
-      } else {
-        // Config / default mode
-        switch (event.cbutton.button) {
-          case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-            emitKey(left, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_UP:
-            emitKey(up, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-            emitKey(right, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-            emitKey(down, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_A:
-            emitKey(a, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_B:
-            emitKey(b, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_X:
-            emitKey(x, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_Y:
-            emitKey(y, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
-            emitKey(l1, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-            emitKey(r1, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_LEFTSTICK:
-            emitKey(l3, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
-            emitKey(r3, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_GUIDE:
-            emitKey(r3, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_BACK: // aka select
-            emitKey(back, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_START:
-            emitKey(start, is_pressed);
-            break;
-        }
-      } //kill mode
-    } break;
-
-    case SDL_CONTROLLERAXISMOTION:
-      if (xbox360_mode) {
-        switch (event.caxis.axis) {
-          case SDL_CONTROLLER_AXIS_LEFTX:
-            emitAxisMotion(ABS_X, event.caxis.value);
-            break;
-
-          case SDL_CONTROLLER_AXIS_LEFTY:
-            emitAxisMotion(ABS_Y, event.caxis.value);
-            break;
-
-          case SDL_CONTROLLER_AXIS_RIGHTX:
-            emitAxisMotion(ABS_RX, event.caxis.value);
-            break;
-
-          case SDL_CONTROLLER_AXIS_RIGHTY:
-            emitAxisMotion(ABS_RY, event.caxis.value);
-            break;
-
-          case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
-            // The target range for the triggers is 0..255 instead of
-            // 0..32767, so we shift down by 7 as that does exactly the
-            // scaling we need (32767 >> 7 is 255)
-            emitAxisMotion(ABS_Z, event.caxis.value >> 7);
-            break;
-
-          case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
-            emitAxisMotion(ABS_RZ, event.caxis.value >> 7);
-            break;
-        }
-      } else {
-        switch (event.caxis.axis) {
-          case SDL_CONTROLLER_AXIS_LEFTX:
-            current_left_analog_x =
-              applyDeadzone(event.caxis.value, deadzone_x);
-            break;
-
-          case SDL_CONTROLLER_AXIS_LEFTY:
-            current_left_analog_y =
-              applyDeadzone(event.caxis.value, deadzone_y);
-            break;
-
-          case SDL_CONTROLLER_AXIS_RIGHTX:
-            current_right_analog_x =
-              applyDeadzone(event.caxis.value, deadzone_x);
-            break;
-
-          case SDL_CONTROLLER_AXIS_RIGHTY:
-            current_right_analog_y =
-              applyDeadzone(event.caxis.value, deadzone_y);
-            break;
-        }
-
-        // fake mouse
-        if (left_analog_mouse == 1) {
-          mouseX = current_left_analog_x / FAKE_MOUSE_SCALE;
-          mouseY = current_left_analog_y / FAKE_MOUSE_SCALE;
-        } else if (right_analog_mouse == 1) {
-          mouseX = current_right_analog_x / FAKE_MOUSE_SCALE;
-          mouseY = current_right_analog_y / FAKE_MOUSE_SCALE;
-        } else {
-          // Analogs trigger keys
-          handleAnalogTrigger(
-            current_left_analog_y < 0, left_analog_was_up, left_analog_up);
-          handleAnalogTrigger(
-            current_left_analog_y > 0, left_analog_was_down, left_analog_down);
-          handleAnalogTrigger(
-            current_left_analog_x < 0, left_analog_was_left, left_analog_left);
-          handleAnalogTrigger(
-            current_left_analog_x > 0,
-            left_analog_was_right,
-            left_analog_right);
-          handleAnalogTrigger(
-            current_right_analog_y < 0, right_analog_was_up, right_analog_up);
-          handleAnalogTrigger(
-            current_right_analog_y > 0,
-            right_analog_was_down,
-            right_analog_down);
-          handleAnalogTrigger(
-            current_right_analog_x < 0,
-            right_analog_was_left,
-            right_analog_left);
-          handleAnalogTrigger(
-            current_right_analog_x > 0,
-            right_analog_was_right,
-            right_analog_right);
-        }
-      }
-      break;
-    case SDL_CONTROLLERDEVICEADDED:
-      if (xbox360_mode == true || config_mode == true) {
-        SDL_GameControllerOpen(0);
-        /* SDL_GameController* controller = SDL_GameControllerOpen(0);
-     if (controller) {
-                      const char *name = SDL_GameControllerNameForIndex(0);
-                          printf("Joystick %i has game controller name '%s'\n", 0, name);
-                  }
-  */
-      } else {
-        SDL_GameControllerOpen(event.cdevice.which);
-      }
-      break;
-
-    case SDL_CONTROLLERDEVICEREMOVED:
-      if (
-        SDL_GameController* controller =
-          SDL_GameControllerFromInstanceID(event.cdevice.which)) {
-        SDL_GameControllerClose(controller);
-      }
-      break;
-
-    case SDL_QUIT:
-      return false;
-      break;
-  }
-
-  return true;
-}
+  int deadzone_y = 15000;
+  int deadzone_x = 15000;
+  int deadzone_triggers = 3000;
+} config;
 
 // convert ASCII chars to key codes
-short char_to_keycode(char str[])
+short char_to_keycode(const char* str)
 {
   short keycode;
 
@@ -773,8 +406,532 @@ short char_to_keycode(char str[])
   return keycode;
 }
 
+void readConfigFile(const char* config_file)
+{
+  const auto parsedConfig = parseConfigFile(config_file);
+  for (const auto& co : parsedConfig) {
+    if (strcmp(co.key, "back") == 0) {
+      config.back = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "guide") == 0) {
+      config.guide = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "start") == 0) {
+      config.start = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "a") == 0) {
+      config.a = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "b") == 0) {
+      config.b = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "x") == 0) {
+      config.x = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "y") == 0) {
+      config.y = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "l1") == 0) {
+      config.l1 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "l2") == 0) {
+      config.l2 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "l3") == 0) {
+      config.l3 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "r1") == 0) {
+      config.r1 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "r2") == 0) {
+      config.r2 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "r3") == 0) {
+      config.r3 = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "up") == 0) {
+      config.up = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "down") == 0) {
+      config.down = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "left") == 0) {
+      config.left = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "right") == 0) {
+      config.right = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "left_analog_up") == 0) {
+      if (strcmp(co.value, "mouse_movement_up") == 0) {
+        config.left_analog_as_mouse = true;
+      } else {
+        config.left_analog_up = char_to_keycode(co.value);
+      }
+    } else if (strcmp(co.key, "left_analog_down") == 0) {
+      config.left_analog_down = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "left_analog_left") == 0) {
+      config.left_analog_left = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "left_analog_right") == 0) {
+      config.left_analog_right = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "right_analog_up") == 0) {
+      if (strcmp(co.value, "mouse_movement_up") == 0) {
+        config.right_analog_as_mouse = true;
+      } else {
+        config.right_analog_up = char_to_keycode(co.value);
+      }
+    } else if (strcmp(co.key, "right_analog_down") == 0) {
+      config.right_analog_down = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "right_analog_left") == 0) {
+      config.right_analog_left = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "right_analog_right") == 0) {
+      config.right_analog_right = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "left_trigger") == 0) {
+      config.left_trigger = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "right_trigger") == 0) {
+      config.right_trigger = char_to_keycode(co.value);
+    } else if (strcmp(co.key, "deadzone_y") == 0) {
+      config.deadzone_y = atoi(co.value);
+    } else if (strcmp(co.key, "deadzone_x") == 0) {
+      config.deadzone_x = atoi(co.value);
+    } else if (strcmp(co.key, "deadzone_triggers") == 0) {
+      config.deadzone_triggers = atoi(co.value);
+    }
+  }
+}
+
+int applyDeadzone(int value, int deadzone)
+{
+  if (std::abs(value) > deadzone) {
+    return value;
+  } else {
+    return 0;
+  }
+}
+
+void UINPUT_SET_ABS_P(
+  uinput_user_dev* dev,
+  int axis,
+  int min,
+  int max,
+  int fuzz,
+  int flat)
+{
+  dev->absmax[axis] = max;
+  dev->absmin[axis] = min;
+  dev->absfuzz[axis] = fuzz;
+  dev->absflat[axis] = flat;
+}
+
+void emit(int type, int code, int val)
+{
+  struct input_event ev;
+
+  ev.type = type;
+  ev.code = code;
+  ev.value = val;
+  /* timestamp values below are ignored */
+  ev.time.tv_sec = 0;
+  ev.time.tv_usec = 0;
+
+  write(uinp_fd, &ev, sizeof(ev));
+}
+
+void emitKey(int code, bool is_pressed)
+{
+  emit(EV_KEY, code, is_pressed ? 1 : 0);
+  emit(EV_SYN, SYN_REPORT, 0);
+}
+
+void emitAxisMotion(int code, int value)
+{
+  emit(EV_ABS, code, value);
+  emit(EV_SYN, SYN_REPORT, 0);
+}
+
+void emitMouseMotion(int x, int y)
+{
+  if (x != 0) {
+    emit(EV_REL, REL_X, x);
+  }
+  if (y != 0) {
+    emit(EV_REL, REL_Y, y);
+  }
+
+  if (x != 0 || y != 0) {
+    emit(EV_SYN, SYN_REPORT, 0);
+  }
+}
+
+void handleAnalogTrigger(bool is_triggered, bool& was_triggered, int key)
+{
+  if (is_triggered && !was_triggered) {
+    emitKey(key, true);
+  } else if (!is_triggered && was_triggered) {
+    emitKey(key, false);
+  }
+
+  was_triggered = is_triggered;
+}
+
+void setupFakeKeyboardMouseDevice(uinput_user_dev& device, int fd)
+{
+  strncpy(device.name, "Fake Keyboard", UINPUT_MAX_NAME_SIZE);
+  device.id.vendor = 0x1234;  /* sample vendor */
+  device.id.product = 0x5678; /* sample product */
+
+  for (int i = 0; i < 256; i++) {
+    ioctl(fd, UI_SET_KEYBIT, i);
+  }
+
+  // Keys or Buttons
+  ioctl(fd, UI_SET_EVBIT, EV_KEY);
+  ioctl(fd, UI_SET_EVBIT, EV_SYN);
+
+  // Fake mouse
+  ioctl(fd, UI_SET_EVBIT, EV_REL);
+  ioctl(fd, UI_SET_RELBIT, REL_X);
+  ioctl(fd, UI_SET_RELBIT, REL_Y);
+  ioctl(fd, UI_SET_KEYBIT, BTN_LEFT);
+  ioctl(fd, UI_SET_KEYBIT, BTN_RIGHT);
+}
+
+void setupFakeXbox360Device(uinput_user_dev& device, int fd)
+{
+  strncpy(device.name, "Microsoft X-Box 360 pad", UINPUT_MAX_NAME_SIZE);
+  device.id.vendor = 0x045e;  /* sample vendor */
+  device.id.product = 0x028e; /* sample product */
+
+  if (
+    ioctl(fd, UI_SET_EVBIT, EV_KEY) || ioctl(fd, UI_SET_EVBIT, EV_SYN) ||
+    ioctl(fd, UI_SET_EVBIT, EV_ABS) ||
+    // X-Box 360 pad buttons
+    ioctl(fd, UI_SET_KEYBIT, BTN_A) || ioctl(fd, UI_SET_KEYBIT, BTN_B) ||
+    ioctl(fd, UI_SET_KEYBIT, BTN_X) || ioctl(fd, UI_SET_KEYBIT, BTN_Y) ||
+    ioctl(fd, UI_SET_KEYBIT, BTN_TL) || ioctl(fd, UI_SET_KEYBIT, BTN_TR) ||
+    ioctl(fd, UI_SET_KEYBIT, BTN_THUMBL) ||
+    ioctl(fd, UI_SET_KEYBIT, BTN_THUMBR) ||
+    ioctl(fd, UI_SET_KEYBIT, BTN_SELECT) ||
+    ioctl(fd, UI_SET_KEYBIT, BTN_START) || ioctl(fd, UI_SET_KEYBIT, BTN_MODE) ||
+    // absolute (sticks)
+    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_LEFTX) ||
+    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_LEFTY) ||
+    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_RIGHTX) ||
+    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_RIGHTY) ||
+    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_TRIGGERLEFT) ||
+    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) ||
+    ioctl(fd, UI_SET_ABSBIT, ABS_HAT0X) ||
+    ioctl(fd, UI_SET_ABSBIT, ABS_HAT0Y)) {
+    printf("Failed to configure fake Xbox 360 controller\n");
+    exit(-1);
+  }
+
+  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_LEFTX, -32768, 32767, 16, 128);
+  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_LEFTY, -32768, 32767, 16, 128);
+  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_RIGHTX, -32768, 32767, 16, 128);
+  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_RIGHTY, -32768, 32767, 16, 128);
+  UINPUT_SET_ABS_P(&device, ABS_HAT0X, -1, 1, 0, 0);
+  UINPUT_SET_ABS_P(&device, ABS_HAT0Y, -1, 1, 0, 0);
+  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_TRIGGERLEFT, 0, 255, 0, 0);
+  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, 0, 255, 0, 0);
+}
+
+bool handleEvent(const SDL_Event& event)
+{
+  switch (event.type) {
+    case SDL_CONTROLLERBUTTONDOWN:
+    case SDL_CONTROLLERBUTTONUP: {
+      const bool is_pressed = event.type == SDL_CONTROLLERBUTTONDOWN;
+
+      if (kill_mode) {
+        // Kill mode
+        switch (event.cbutton.button) {
+          case SDL_CONTROLLER_BUTTON_GUIDE:
+            state.back_jsdevice = event.cdevice.which;
+            state.back_pressed = is_pressed;
+            break;
+
+          case SDL_CONTROLLER_BUTTON_START:
+            state.start_jsdevice = event.cdevice.which;
+            state.start_pressed = is_pressed;
+            break;
+        }
+
+        if (state.start_pressed && state.back_pressed) {
+          // printf("Killing: %s\n", AppToKill);
+          if (state.start_jsdevice == state.back_jsdevice) {
+            system((" killall  '" + std::string(AppToKill) + "' ").c_str());
+            system("show_splash.sh exit");
+            sleep(3);
+            if (
+              system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) ==
+              0) {
+              printf("Forcefully Killing: %s\n", AppToKill);
+              system(
+                (" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
+            }
+            exit(0);
+          }
+        }
+      } else if (xbox360_mode) {
+        // Fake Xbox360 mode
+        switch (event.cbutton.button) {
+          case SDL_CONTROLLER_BUTTON_A:
+            emitKey(BTN_A, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_B:
+            emitKey(BTN_B, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_X:
+            emitKey(BTN_X, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_Y:
+            emitKey(BTN_Y, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+            emitKey(BTN_TL, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+            emitKey(BTN_TR, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_LEFTSTICK:
+            emitKey(BTN_THUMBL, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+            emitKey(BTN_THUMBR, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_BACK: // aka select
+            emitKey(BTN_SELECT, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_GUIDE:
+            emitKey(BTN_MODE, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_START:
+            emitKey(BTN_START, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_UP:
+            emitAxisMotion(ABS_HAT0Y, is_pressed ? -1 : 0);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+            emitAxisMotion(ABS_HAT0Y, is_pressed ? 1 : 0);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+            emitAxisMotion(ABS_HAT0X, is_pressed ? -1 : 0);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+            emitAxisMotion(ABS_HAT0X, is_pressed ? 1 : 0);
+            break;
+        }
+      } else {
+        // Config / default mode
+        switch (event.cbutton.button) {
+          case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+            emitKey(config.left, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_UP:
+            emitKey(config.up, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+            emitKey(config.right, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+            emitKey(config.down, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_A:
+            emitKey(config.a, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_B:
+            emitKey(config.b, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_X:
+            emitKey(config.x, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_Y:
+            emitKey(config.y, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+            emitKey(config.l1, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+            emitKey(config.r1, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_LEFTSTICK:
+            emitKey(config.l3, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+            emitKey(config.r3, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_GUIDE:
+            emitKey(config.guide, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_BACK: // aka select
+            emitKey(config.back, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_START:
+            emitKey(config.start, is_pressed);
+            break;
+        }
+      } //kill mode
+    } break;
+
+    case SDL_CONTROLLERAXISMOTION:
+      if (xbox360_mode) {
+        switch (event.caxis.axis) {
+          case SDL_CONTROLLER_AXIS_LEFTX:
+            emitAxisMotion(ABS_X, event.caxis.value);
+            break;
+
+          case SDL_CONTROLLER_AXIS_LEFTY:
+            emitAxisMotion(ABS_Y, event.caxis.value);
+            break;
+
+          case SDL_CONTROLLER_AXIS_RIGHTX:
+            emitAxisMotion(ABS_RX, event.caxis.value);
+            break;
+
+          case SDL_CONTROLLER_AXIS_RIGHTY:
+            emitAxisMotion(ABS_RY, event.caxis.value);
+            break;
+
+          case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
+            // The target range for the triggers is 0..255 instead of
+            // 0..32767, so we shift down by 7 as that does exactly the
+            // scaling we need (32767 >> 7 is 255)
+            emitAxisMotion(ABS_Z, event.caxis.value >> 7);
+            break;
+
+          case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
+            emitAxisMotion(ABS_RZ, event.caxis.value >> 7);
+            break;
+        }
+      } else {
+        switch (event.caxis.axis) {
+          case SDL_CONTROLLER_AXIS_LEFTX:
+            state.current_left_analog_x =
+              applyDeadzone(event.caxis.value, config.deadzone_x);
+            break;
+
+          case SDL_CONTROLLER_AXIS_LEFTY:
+            state.current_left_analog_y =
+              applyDeadzone(event.caxis.value, config.deadzone_y);
+            break;
+
+          case SDL_CONTROLLER_AXIS_RIGHTX:
+            state.current_right_analog_x =
+              applyDeadzone(event.caxis.value, config.deadzone_x);
+            break;
+
+          case SDL_CONTROLLER_AXIS_RIGHTY:
+            state.current_right_analog_y =
+              applyDeadzone(event.caxis.value, config.deadzone_y);
+            break;
+
+          case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
+            state.current_left_trigger = event.caxis.value;
+            break;
+
+          case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
+            state.current_right_trigger = event.caxis.value;
+            break;
+        }
+
+        // fake mouse
+        if (config.left_analog_as_mouse) {
+          state.mouseX = state.current_left_analog_x / FAKE_MOUSE_SCALE;
+          state.mouseY = state.current_left_analog_y / FAKE_MOUSE_SCALE;
+        } else if (config.right_analog_as_mouse) {
+          state.mouseX = state.current_right_analog_x / FAKE_MOUSE_SCALE;
+          state.mouseY = state.current_right_analog_y / FAKE_MOUSE_SCALE;
+        } else {
+          // Analogs trigger keys
+          handleAnalogTrigger(
+            state.current_left_analog_y < 0,
+            state.left_analog_was_up,
+            config.left_analog_up);
+          handleAnalogTrigger(
+            state.current_left_analog_y > 0,
+            state.left_analog_was_down,
+            config.left_analog_down);
+          handleAnalogTrigger(
+            state.current_left_analog_x < 0,
+            state.left_analog_was_left,
+            config.left_analog_left);
+          handleAnalogTrigger(
+            state.current_left_analog_x > 0,
+            state.left_analog_was_right,
+            config.left_analog_right);
+          handleAnalogTrigger(
+            state.current_right_analog_y < 0,
+            state.right_analog_was_up,
+            config.right_analog_up);
+          handleAnalogTrigger(
+            state.current_right_analog_y > 0,
+            state.right_analog_was_down,
+            config.right_analog_down);
+          handleAnalogTrigger(
+            state.current_right_analog_x < 0,
+            state.right_analog_was_left,
+            config.right_analog_left);
+          handleAnalogTrigger(
+            state.current_right_analog_x > 0,
+            state.right_analog_was_right,
+            config.right_analog_right);
+        }
+
+        handleAnalogTrigger(
+          state.current_left_trigger > config.deadzone_triggers,
+          state.left_trigger_was_pressed,
+          config.left_trigger);
+        handleAnalogTrigger(
+          state.current_right_trigger > config.deadzone_triggers,
+          state.right_trigger_was_pressed,
+          config.right_trigger);
+      }
+      break;
+    case SDL_CONTROLLERDEVICEADDED:
+      if (xbox360_mode == true || config_mode == true) {
+        SDL_GameControllerOpen(0);
+        /* SDL_GameController* controller = SDL_GameControllerOpen(0);
+     if (controller) {
+                      const char *name = SDL_GameControllerNameForIndex(0);
+                          printf("Joystick %i has game controller name '%s'\n", 0, name);
+                  }
+  */
+      } else {
+        SDL_GameControllerOpen(event.cdevice.which);
+      }
+      break;
+
+    case SDL_CONTROLLERDEVICEREMOVED:
+      if (
+        SDL_GameController* controller =
+          SDL_GameControllerFromInstanceID(event.cdevice.which)) {
+        SDL_GameControllerClose(controller);
+      }
+      break;
+
+    case SDL_QUIT:
+      return false;
+      break;
+  }
+
+  return true;
+}
+
 int main(int argc, char* argv[])
 {
+  const char* config_file = nullptr;
+
   if (argc > 1) {
     if (strcmp(argv[1], "xbox360") == 0) {
       xbox360_mode = true;
@@ -782,7 +939,7 @@ int main(int argc, char* argv[])
       config_mode = true;
       config_file = argv[2];
     } else {
-      kill_mode = argv[1];
+      kill_mode = true;
       AppToKill = argv[2];
     }
   }
@@ -809,81 +966,7 @@ int main(int argc, char* argv[])
 
       // if we are in config mode, read the file
       if (config_mode) {
-        // parse config file
-        config_option_t co;
-        if ((co = read_config_file(config_file)) != NULL) {
-          while (1) {
-            if (strcmp(co->key, "back") == 0) {
-              back = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "guide") == 0) {
-              start = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "start") == 0) {
-              start = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "a") == 0) {
-              a = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "b") == 0) {
-              b = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "x") == 0) {
-              x = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "y") == 0) {
-              y = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "l1") == 0) {
-              l1 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "l2") == 0) {
-              l2 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "l3") == 0) {
-              l3 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "r1") == 0) {
-              r1 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "r2") == 0) {
-              r2 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "r3") == 0) {
-              r3 = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "up") == 0) {
-              up = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "down") == 0) {
-              down = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "left") == 0) {
-              left = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "right") == 0) {
-              right = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "left_analog_up") == 0) {
-              if (strcmp(co->value, "mouse_movement_up") == 0) {
-                left_analog_mouse = 1;
-              } else {
-                left_analog_up = char_to_keycode(co->value);
-              }
-            } else if (strcmp(co->key, "left_analog_down") == 0) {
-              left_analog_down = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "left_analog_left") == 0) {
-              left_analog_left = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "left_analog_right") == 0) {
-              left_analog_right = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "right_analog_up") == 0) {
-              if (strcmp(co->value, "mouse_movement_up") == 0) {
-                right_analog_mouse = 1;
-              } else {
-                right_analog_up = char_to_keycode(co->value);
-              }
-            } else if (strcmp(co->key, "right_analog_down") == 0) {
-              right_analog_down = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "right_analog_left") == 0) {
-              right_analog_left = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "right_analog_right") == 0) {
-              right_analog_right = char_to_keycode(co->value);
-            } else if (strcmp(co->key, "deadzone_y") == 0) {
-              deadzone_y = atoi(co->value);
-            } else if (strcmp(co->key, "deadzone_x") == 0) {
-              deadzone_x = atoi(co->value);
-            }
-
-            if (co->prev != NULL) {
-              co = co->prev;
-            } else {
-              break;
-            }
-          }
-        }
+        readConfigFile(config_file);
       }
     }
     // Create input device into input sub-system
@@ -908,12 +991,12 @@ int main(int argc, char* argv[])
   SDL_Event event;
   bool running = true;
   while (running) {
-    if (mouseX != 0 || mouseY != 0) {
+    if (state.mouseX != 0 || state.mouseY != 0) {
       while (running && SDL_PollEvent(&event)) {
         running = handleEvent(event);
       }
 
-      emitMouseMotion(mouseX, mouseY);
+      emitMouseMotion(state.mouseX, state.mouseY);
       SDL_Delay(FAKE_MOUSE_SPEED);
     } else {
       if (!SDL_WaitEvent(&event)) {
