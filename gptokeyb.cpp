@@ -932,7 +932,12 @@ int main(int argc, char* argv[])
 {
   const char* config_file = nullptr;
 
+config_mode = true;
+config_file = "/emuelec/configs/gptokeyb/default.gptk";
+
   if (argc > 1) {
+    config_mode = false;
+    config_file = "";
     if (strcmp(argv[1], "xbox360") == 0) {
       xbox360_mode = true;
     } else if (strcmp(argv[1], "-c") == 0) {
@@ -966,6 +971,7 @@ int main(int argc, char* argv[])
 
       // if we are in config mode, read the file
       if (config_mode) {
+        printf("Using ConfigFile %s\n", config_file);
         readConfigFile(config_file);
       }
     }
