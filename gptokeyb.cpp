@@ -98,8 +98,8 @@ std::vector<config_option> parseConfigFile(const char* path)
   return result;
 }
 
-const int FAKE_MOUSE_SCALE = 512;
-const int FAKE_MOUSE_SPEED = 16;
+int FAKE_MOUSE_SCALE = 512;
+int FAKE_MOUSE_SPEED = 16;
 
 static int uinp_fd = -1;
 struct uinput_user_dev uidev;
@@ -478,6 +478,10 @@ void readConfigFile(const char* config_file)
       config.deadzone_x = atoi(co.value);
     } else if (strcmp(co.key, "deadzone_triggers") == 0) {
       config.deadzone_triggers = atoi(co.value);
+    } else if (strcmp(co.key, "mouse_scale") == 0) {
+      FAKE_MOUSE_SCALE = atoi(co.value);
+    } else if (strcmp(co.key, "mouse_speed") == 0) {
+      FAKE_MOUSE_SPEED = atoi(co.value);
     }
   }
 }
