@@ -480,9 +480,9 @@ void readConfigFile(const char* config_file)
     } else if (strcmp(co.key, "deadzone_triggers") == 0) {
       config.deadzone_triggers = atoi(co.value);
     } else if (strcmp(co.key, "mouse_scale") == 0) {
-      fake_mouse_scale = atoi(co.value);
+      config.fake_mouse_scale = atoi(co.value);
     } else if (strcmp(co.key, "mouse_delay") == 0) {
-      fake_mouse_delay = atoi(co.value);
+      config.fake_mouse_delay = atoi(co.value);
     }
   }
 }
@@ -852,11 +852,11 @@ bool handleEvent(const SDL_Event& event)
 
         // fake mouse
         if (config.left_analog_as_mouse) {
-          state.mouseX = state.current_left_analog_x / fake_mouse_scale;
-          state.mouseY = state.current_left_analog_y / fake_mouse_scale;
+          state.mouseX = state.current_left_analog_x / config.fake_mouse_scale;
+          state.mouseY = state.current_left_analog_y / config.fake_mouse_scale;
         } else if (config.right_analog_as_mouse) {
-          state.mouseX = state.current_right_analog_x / fake_mouse_scale;
-          state.mouseY = state.current_right_analog_y / fake_mouse_scale;
+          state.mouseX = state.current_right_analog_x / config.fake_mouse_scale;
+          state.mouseY = state.current_right_analog_y / config.fake_mouse_scale;
         } else {
           // Analogs trigger keys
           handleAnalogTrigger(
@@ -1008,7 +1008,7 @@ config_file = "/emuelec/configs/gptokeyb/default.gptk";
       }
 
       emitMouseMotion(state.mouseX, state.mouseY);
-      SDL_Delay(fake_mouse_delay);
+      SDL_Delay(config.fake_mouse_delay);
     } else {
       if (!SDL_WaitEvent(&event)) {
         printf("SDL_WaitEvent() failed: %s\n", SDL_GetError());
