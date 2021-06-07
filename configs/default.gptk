@@ -29,4 +29,4 @@ deadzone_y = 2100
 deadzone_x = 1900
 deadzone_triggers = 3000
 mouse_scale = 512
-mouse_speed = 16
+mouse_delay = 16

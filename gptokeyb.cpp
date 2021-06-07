@@ -98,9 +98,6 @@ std::vector<config_option> parseConfigFile(const char* path)
   return result;
 }
 
-int FAKE_MOUSE_SCALE = 512;
-int FAKE_MOUSE_SPEED = 16;
-
 static int uinp_fd = -1;
 struct uinput_user_dev uidev;
 
@@ -173,6 +170,10 @@ struct
   int deadzone_y = 15000;
   int deadzone_x = 15000;
   int deadzone_triggers = 3000;
+  
+  int fake_mouse_scale = 512;
+  int fake_mouse_delay = 16;
+  
 } config;
 
 // convert ASCII chars to key codes
@@ -479,9 +480,9 @@ void readConfigFile(const char* config_file)
     } else if (strcmp(co.key, "deadzone_triggers") == 0) {
       config.deadzone_triggers = atoi(co.value);
     } else if (strcmp(co.key, "mouse_scale") == 0) {
-      FAKE_MOUSE_SCALE = atoi(co.value);
-    } else if (strcmp(co.key, "mouse_speed") == 0) {
-      FAKE_MOUSE_SPEED = atoi(co.value);
+      fake_mouse_scale = atoi(co.value);
+    } else if (strcmp(co.key, "mouse_delay") == 0) {
+      fake_mouse_delay = atoi(co.value);
     }
   }
 }
@@ -851,11 +852,11 @@ bool handleEvent(const SDL_Event& event)
 
         // fake mouse
         if (config.left_analog_as_mouse) {
-          state.mouseX = state.current_left_analog_x / FAKE_MOUSE_SCALE;
-          state.mouseY = state.current_left_analog_y / FAKE_MOUSE_SCALE;
+          state.mouseX = state.current_left_analog_x / fake_mouse_scale;
+          state.mouseY = state.current_left_analog_y / fake_mouse_scale;
         } else if (config.right_analog_as_mouse) {
-          state.mouseX = state.current_right_analog_x / FAKE_MOUSE_SCALE;
-          state.mouseY = state.current_right_analog_y / FAKE_MOUSE_SCALE;
+          state.mouseX = state.current_right_analog_x / fake_mouse_scale;
+          state.mouseY = state.current_right_analog_y / fake_mouse_scale;
         } else {
           // Analogs trigger keys
           handleAnalogTrigger(
@@ -1007,7 +1008,7 @@ config_file = "/emuelec/configs/gptokeyb/default.gptk";
       }
 
       emitMouseMotion(state.mouseX, state.mouseY);
-      SDL_Delay(FAKE_MOUSE_SPEED);
+      SDL_Delay(fake_mouse_delay);
     } else {
       if (!SDL_WaitEvent(&event)) {
         printf("SDL_WaitEvent() failed: %s\n", SDL_GetError());
