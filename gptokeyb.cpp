@@ -117,8 +117,8 @@ struct
   int current_left_analog_y = 0;
   int current_right_analog_x = 0;
   int current_right_analog_y = 0;
-  int current_left_trigger = 0;
-  int current_right_trigger = 0;
+  int current_l2 = 0;
+  int current_r2 = 0;
   bool back_pressed = false;
   bool start_pressed = false;
   bool left_analog_was_up = false;
@@ -129,8 +129,8 @@ struct
   bool right_analog_was_down = false;
   bool right_analog_was_left = false;
   bool right_analog_was_right = false;
-  bool left_trigger_was_pressed = false;
-  bool right_trigger_was_pressed = false;
+  bool l2_was_pressed = false;
+  bool r2_was_pressed = false;
 } state;
 
 struct
@@ -143,10 +143,10 @@ struct
   short x = KEY_C;
   short y = KEY_A;
   short l1 = KEY_RIGHTSHIFT;
-  short l2 = BTN_LEFT;
+  short l2 = KEY_HOME;
   short l3 = BTN_LEFT;
   short r1 = KEY_LEFTSHIFT;
-  short r2 = BTN_RIGHT;
+  short r2 = KEY_END;
   short r3 = BTN_RIGHT;
   short up = KEY_UP;
   short down = KEY_DOWN;
@@ -164,16 +164,13 @@ struct
   short right_analog_left = KEY_LEFT;
   short right_analog_right = KEY_RIGHT;
 
-  short left_trigger = KEY_HOME;
-  short right_trigger = KEY_END;
-
   int deadzone_y = 15000;
   int deadzone_x = 15000;
   int deadzone_triggers = 3000;
-  
+
   int fake_mouse_scale = 512;
   int fake_mouse_delay = 16;
-  
+
 } config;
 
 // convert ASCII chars to key codes
@@ -469,10 +466,6 @@ void readConfigFile(const char* config_file)
       config.right_analog_left = char_to_keycode(co.value);
     } else if (strcmp(co.key, "right_analog_right") == 0) {
       config.right_analog_right = char_to_keycode(co.value);
-    } else if (strcmp(co.key, "left_trigger") == 0) {
-      config.left_trigger = char_to_keycode(co.value);
-    } else if (strcmp(co.key, "right_trigger") == 0) {
-      config.right_trigger = char_to_keycode(co.value);
     } else if (strcmp(co.key, "deadzone_y") == 0) {
       config.deadzone_y = atoi(co.value);
     } else if (strcmp(co.key, "deadzone_x") == 0) {
@@ -842,11 +835,11 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
-            state.current_left_trigger = event.caxis.value;
+            state.current_l2 = event.caxis.value;
             break;
 
           case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
-            state.current_right_trigger = event.caxis.value;
+            state.current_r2 = event.caxis.value;
             break;
         }
 
@@ -894,13 +887,13 @@ bool handleEvent(const SDL_Event& event)
         }
 
         handleAnalogTrigger(
-          state.current_left_trigger > config.deadzone_triggers,
-          state.left_trigger_was_pressed,
-          config.left_trigger);
+          state.current_l2 > config.deadzone_triggers,
+          state.l2_was_pressed,
+          config.l2);
         handleAnalogTrigger(
-          state.current_right_trigger > config.deadzone_triggers,
-          state.right_trigger_was_pressed,
-          config.right_trigger);
+          state.current_r2 > config.deadzone_triggers,
+          state.r2_was_pressed,
+          config.r2);
       }
       break;
     case SDL_CONTROLLERDEVICEADDED:
@@ -937,8 +930,8 @@ int main(int argc, char* argv[])
 {
   const char* config_file = nullptr;
 
-config_mode = true;
-config_file = "/emuelec/configs/gptokeyb/default.gptk";
+  config_mode = true;
+  config_file = "/emuelec/configs/gptokeyb/default.gptk";
 
   if (argc > 1) {
     config_mode = false;
