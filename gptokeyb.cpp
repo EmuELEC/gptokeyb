@@ -937,8 +937,8 @@ int main(int argc, char* argv[])
 {
   const char* config_file = nullptr;
 
-config_mode = true;
-config_file = "/emuelec/configs/gptokeyb/default.gptk";
+  config_mode = true;
+  config_file = "/emuelec/configs/gptokeyb/default.gptk";
 
   if (argc > 1) {
     config_mode = false;
