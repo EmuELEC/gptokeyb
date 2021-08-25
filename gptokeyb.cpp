@@ -982,14 +982,14 @@ int main(int argc, char* argv[])
     }
   }
 
+  if (const char* db_file = SDL_getenv("SDL_GAMECONTROLLERCONFIG_FILE")) {
+    SDL_GameControllerAddMappingsFromFile(db_file);
+  }
+
   // SDL initialization and main loop
   if (SDL_Init(SDL_INIT_GAMECONTROLLER) != 0) {
     printf("SDL_Init() failed: %s\n", SDL_GetError());
     return -1;
-  }
-
-  if (const char* db_file = SDL_getenv("SDL_GAMECONTROLLERCONFIG_FILE")) {
-    SDL_GameControllerAddMappingsFromFile(db_file);
   }
 
   SDL_Event event;
