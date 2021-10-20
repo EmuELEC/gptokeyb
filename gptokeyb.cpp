@@ -102,6 +102,7 @@ static int uinp_fd = -1;
 struct uinput_user_dev uidev;
 
 bool kill_mode = false;
+bool sudo_kill = false; //allow sudo kill instead of killall for non-emuelec systems
 bool openbor_mode = false;
 bool xbox360_mode = false;
 char* AppToKill;
@@ -623,37 +624,7 @@ bool handleEvent(const SDL_Event& event)
     case SDL_CONTROLLERBUTTONUP: {
       const bool is_pressed = event.type == SDL_CONTROLLERBUTTONDOWN;
 
-      if (kill_mode) {
-        // Kill mode
-        switch (event.cbutton.button) {
-          case SDL_CONTROLLER_BUTTON_GUIDE:
-            state.back_jsdevice = event.cdevice.which;
-            state.back_pressed = is_pressed;
-            break;
-
-          case SDL_CONTROLLER_BUTTON_START:
-            state.start_jsdevice = event.cdevice.which;
-            state.start_pressed = is_pressed;
-            break;
-        }
-
-        if (state.start_pressed && state.back_pressed) {
-          // printf("Killing: %s\n", AppToKill);
-          if (state.start_jsdevice == state.back_jsdevice) {
-            system((" killall  '" + std::string(AppToKill) + "' ").c_str());
-            system("show_splash.sh exit");
-            sleep(3);
-            if (
-              system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) ==
-              0) {
-              printf("Forcefully Killing: %s\n", AppToKill);
-              system(
-                (" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
-            }
-            exit(0);
-          }
-        }
-      } else if (xbox360_mode) {
+      if (xbox360_mode) {
         // Fake Xbox360 mode
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_A:
@@ -690,14 +661,26 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
             emitKey(BTN_SELECT, is_pressed);
+            if (kill_mode) {
+              state.back_jsdevice = event.cdevice.which;
+              state.back_pressed = is_pressed;
+           }
             break;
 
           case SDL_CONTROLLER_BUTTON_GUIDE:
             emitKey(BTN_MODE, is_pressed);
+            if (kill_mode) {
+              state.back_jsdevice = event.cdevice.which;
+              state.back_pressed = is_pressed;
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_START:
             emitKey(BTN_START, is_pressed);
+            if (kill_mode) {
+              state.start_jsdevice = event.cdevice.which;
+              state.start_pressed = is_pressed;
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_UP:
@@ -716,6 +699,31 @@ bool handleEvent(const SDL_Event& event)
             emitAxisMotion(ABS_HAT0X, is_pressed ? 1 : 0);
             break;
         }
+         if ((kill_mode) && (state.start_pressed && state.back_pressed)) {
+          if (! sudo_kill) {
+             // printf("Killing: %s\n", AppToKill);
+             if (state.start_jsdevice == state.back_jsdevice) {
+                system((" killall  '" + std::string(AppToKill) + "' ").c_str());
+                system("show_splash.sh exit");
+               sleep(3);
+               if (
+                 system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) ==
+                 0) {
+                 printf("Forcefully Killing: %s\n", AppToKill);
+                 system(
+                   (" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
+               }
+            exit(0); 
+            }             
+          } else {
+             if (state.start_jsdevice == state.back_jsdevice) {
+                system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
+               sleep(3);
+               exit(0);
+             }
+           } // sudo kill
+        } //kill mode
+       
       } else {
         // Config / default mode
         switch (event.cbutton.button) {
@@ -769,17 +777,53 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_GUIDE:
             emitKey(config.guide, is_pressed);
+            if (kill_mode) {
+                state.back_jsdevice = event.cdevice.which;
+                state.back_pressed = is_pressed;
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
             emitKey(config.back, is_pressed);
+            if (kill_mode) {
+                state.back_jsdevice = event.cdevice.which;
+                state.back_pressed = is_pressed;
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_START:
             emitKey(config.start, is_pressed);
+            if (kill_mode) {
+                state.start_jsdevice = event.cdevice.which;
+                state.start_pressed = is_pressed;
+            }
             break;
         }
-      } //kill mode
+        if ((kill_mode) && (state.start_pressed && state.back_pressed)) {
+          if (! sudo_kill) {
+             // printf("Killing: %s\n", AppToKill);
+             if (state.start_jsdevice == state.back_jsdevice) {
+                system((" killall  '" + std::string(AppToKill) + "' ").c_str());
+                system("show_splash.sh exit");
+               sleep(3);
+               if (
+                 system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) ==
+                 0) {
+                 printf("Forcefully Killing: %s\n", AppToKill);
+                 system(
+                   (" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
+               }
+            exit(0); 
+            }             
+          } else {
+             if (state.start_jsdevice == state.back_jsdevice) {
+                system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
+               sleep(3);
+               exit(0);
+             }
+           } // sudo kill
+        } //kill mode
+      } //xbox or config/default
     } break;
 
     case SDL_CONTROLLERAXISMOTION:
@@ -936,19 +980,37 @@ int main(int argc, char* argv[])
   if (argc > 1) {
     config_mode = false;
     config_file = "";
-    if (strcmp(argv[1], "xbox360") == 0) {
+  }
+
+  for( int ii = 1; ii < argc; ii++ )
+  {      
+    if (strcmp(argv[ii], "xbox360") == 0) {
       xbox360_mode = true;
-    } else if (strcmp(argv[1], "-c") == 0) {
-      config_mode = true;
-      config_file = argv[2];
-    } else {
-      kill_mode = true;
-      AppToKill = argv[2];
+    } else if (strcmp(argv[ii], "-c") == 0) {
+      if (ii + 1 < argc) { 
+        config_mode = true;
+        config_file = argv[++ii];
+      } else {
+        config_mode = true;
+        config_file = "/emuelec/configs/gptokeyb/default.gptk";
+      }
+    } else if ((strcmp(argv[ii], "-1") == 0) || (strcmp(argv[ii], "-k") == 0)) {
+      if (ii + 1 < argc) { 
+        kill_mode = true;
+        AppToKill = argv[++ii];
+      }
+    } else if ((strcmp(argv[ii], "-sudokill") == 0)) {
+      if (ii + 1 < argc) { 
+        kill_mode = true;
+        sudo_kill = true;
+        AppToKill = argv[++ii];
+      }
+      
     }
   }
 
   // Create fake input device (not needed in kill mode)
-  if (!kill_mode) {
+  //if (!kill_mode) {  initialise device, now that kill mode will work with config & xbox modes
     uinp_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
     if (uinp_fd < 0) {
       printf("Unable to open /dev/uinput\n");
@@ -980,7 +1042,7 @@ int main(int argc, char* argv[])
       printf("Unable to create UINPUT device.");
       return -1;
     }
-  }
+  //}
 
   if (const char* db_file = SDL_getenv("SDL_GAMECONTROLLERCONFIG_FILE")) {
     SDL_GameControllerAddMappingsFromFile(db_file);
