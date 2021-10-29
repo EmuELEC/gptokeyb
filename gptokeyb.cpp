@@ -653,6 +653,10 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_LEFTSTICK:
             emitKey(BTN_THUMBL, is_pressed);
+            if (kill_mode) {
+                state.back_jsdevice = event.cdevice.which;
+                state.back_pressed = is_pressed;
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
@@ -769,6 +773,10 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_LEFTSTICK:
             emitKey(config.l3, is_pressed);
+            if (kill_mode) {
+                state.back_jsdevice = event.cdevice.which;
+                state.back_pressed = is_pressed;
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
@@ -994,7 +1002,7 @@ int main(int argc, char* argv[])
         config_mode = true;
         config_file = "/emuelec/configs/gptokeyb/default.gptk";
       }
-    } else if ((strcmp(argv[ii], "-1") == 0) || (strcmp(argv[ii], "-k") == 0)) {
+    } else if ((strcmp(argv[ii], "1") == 0) || (strcmp(argv[ii], "-1") == 0) || (strcmp(argv[ii], "-k") == 0)) {
       if (ii + 1 < argc) { 
         kill_mode = true;
         AppToKill = argv[++ii];
