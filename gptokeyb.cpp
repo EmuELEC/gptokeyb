@@ -653,6 +653,10 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_LEFTSTICK:
             emitKey(BTN_THUMBL, is_pressed);
+            if (kill_mode) {
+                state.back_jsdevice = event.cdevice.which;
+                state.back_pressed = is_pressed;
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
@@ -769,6 +773,10 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_LEFTSTICK:
             emitKey(config.l3, is_pressed);
+            if (kill_mode) {
+                state.back_jsdevice = event.cdevice.which;
+                state.back_pressed = is_pressed;
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
@@ -857,25 +865,33 @@ bool handleEvent(const SDL_Event& event)
             break;
         }
       } else {
+        // indicate which axis was moved before checking whether it's assigned as mouse
+        bool left_axis_movement = false;
+        bool right_axis_movement = false;
+        
         switch (event.caxis.axis) {
           case SDL_CONTROLLER_AXIS_LEFTX:
             state.current_left_analog_x =
               applyDeadzone(event.caxis.value, config.deadzone_x);
+              left_axis_movement = true;
             break;
 
           case SDL_CONTROLLER_AXIS_LEFTY:
             state.current_left_analog_y =
               applyDeadzone(event.caxis.value, config.deadzone_y);
+              left_axis_movement = true;
             break;
 
           case SDL_CONTROLLER_AXIS_RIGHTX:
             state.current_right_analog_x =
               applyDeadzone(event.caxis.value, config.deadzone_x);
+              right_axis_movement = true;
             break;
 
           case SDL_CONTROLLER_AXIS_RIGHTY:
             state.current_right_analog_y =
               applyDeadzone(event.caxis.value, config.deadzone_y);
+              right_axis_movement = true;
             break;
 
           case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
@@ -888,10 +904,10 @@ bool handleEvent(const SDL_Event& event)
         }
 
         // fake mouse
-        if (config.left_analog_as_mouse) {
+        if (config.left_analog_as_mouse && left_axis_movement) {
           state.mouseX = state.current_left_analog_x / config.fake_mouse_scale;
           state.mouseY = state.current_left_analog_y / config.fake_mouse_scale;
-        } else if (config.right_analog_as_mouse) {
+        } else if (config.right_analog_as_mouse && right_axis_movement) {
           state.mouseX = state.current_right_analog_x / config.fake_mouse_scale;
           state.mouseY = state.current_right_analog_y / config.fake_mouse_scale;
         } else {
@@ -994,7 +1010,7 @@ int main(int argc, char* argv[])
         config_mode = true;
         config_file = "/emuelec/configs/gptokeyb/default.gptk";
       }
-    } else if ((strcmp(argv[ii], "-1") == 0) || (strcmp(argv[ii], "-k") == 0)) {
+    } else if ((strcmp(argv[ii], "1") == 0) || (strcmp(argv[ii], "-1") == 0) || (strcmp(argv[ii], "-k") == 0)) {
       if (ii + 1 < argc) { 
         kill_mode = true;
         AppToKill = argv[++ii];
