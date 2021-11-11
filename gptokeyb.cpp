@@ -107,10 +107,12 @@ bool openbor_mode = false;
 bool xbox360_mode = false;
 char* AppToKill;
 bool config_mode = false;
+bool hotkey_override = false;
+char* hotkey_code;
 
 struct
 {
-  int back_jsdevice;
+  int hotkey_jsdevice;
   int start_jsdevice;
   int mouseX = 0;
   int mouseY = 0;
@@ -120,7 +122,7 @@ struct
   int current_right_analog_y = 0;
   int current_l2 = 0;
   int current_r2 = 0;
-  bool back_pressed = false;
+  bool hotkey_pressed = false;
   bool start_pressed = false;
   bool left_analog_was_up = false;
   bool left_analog_was_down = false;
@@ -653,9 +655,9 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_LEFTSTICK:
             emitKey(BTN_THUMBL, is_pressed);
-            if (kill_mode) {
-                state.back_jsdevice = event.cdevice.which;
-                state.back_pressed = is_pressed;
+            if (kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) {
+                state.hotkey_jsdevice = event.cdevice.which;
+                state.hotkey_pressed = is_pressed;
             }
             break;
 
@@ -665,17 +667,17 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
             emitKey(BTN_SELECT, is_pressed);
-            if (kill_mode) {
-              state.back_jsdevice = event.cdevice.which;
-              state.back_pressed = is_pressed;
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0))) {
+              state.hotkey_jsdevice = event.cdevice.which;
+              state.hotkey_pressed = is_pressed;
            }
             break;
 
           case SDL_CONTROLLER_BUTTON_GUIDE:
             emitKey(BTN_MODE, is_pressed);
-            if (kill_mode) {
-              state.back_jsdevice = event.cdevice.which;
-              state.back_pressed = is_pressed;
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0))) {
+              state.hotkey_jsdevice = event.cdevice.which;
+              state.hotkey_pressed = is_pressed;
             }
             break;
 
@@ -703,10 +705,10 @@ bool handleEvent(const SDL_Event& event)
             emitAxisMotion(ABS_HAT0X, is_pressed ? 1 : 0);
             break;
         }
-         if ((kill_mode) && (state.start_pressed && state.back_pressed)) {
+         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {
           if (! sudo_kill) {
              // printf("Killing: %s\n", AppToKill);
-             if (state.start_jsdevice == state.back_jsdevice) {
+             if (state.start_jsdevice == state.hotkey_jsdevice) {
                 system((" killall  '" + std::string(AppToKill) + "' ").c_str());
                 system("show_splash.sh exit");
                sleep(3);
@@ -720,7 +722,7 @@ bool handleEvent(const SDL_Event& event)
             exit(0); 
             }             
           } else {
-             if (state.start_jsdevice == state.back_jsdevice) {
+             if (state.start_jsdevice == state.hotkey_jsdevice) {
                 system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
                sleep(3);
                exit(0);
@@ -773,9 +775,9 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_LEFTSTICK:
             emitKey(config.l3, is_pressed);
-            if (kill_mode) {
-                state.back_jsdevice = event.cdevice.which;
-                state.back_pressed = is_pressed;
+            if (kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) {
+                state.hotkey_jsdevice = event.cdevice.which;
+                state.hotkey_pressed = is_pressed;
             }
             break;
 
@@ -785,17 +787,17 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_GUIDE:
             emitKey(config.guide, is_pressed);
-            if (kill_mode) {
-                state.back_jsdevice = event.cdevice.which;
-                state.back_pressed = is_pressed;
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0))) {
+              state.hotkey_jsdevice = event.cdevice.which;
+              state.hotkey_pressed = is_pressed;
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
             emitKey(config.back, is_pressed);
-            if (kill_mode) {
-                state.back_jsdevice = event.cdevice.which;
-                state.back_pressed = is_pressed;
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0))) {
+              state.hotkey_jsdevice = event.cdevice.which;
+              state.hotkey_pressed = is_pressed;
             }
             break;
 
@@ -804,13 +806,13 @@ bool handleEvent(const SDL_Event& event)
             if (kill_mode) {
                 state.start_jsdevice = event.cdevice.which;
                 state.start_pressed = is_pressed;
-            }
+            };
             break;
         }
-        if ((kill_mode) && (state.start_pressed && state.back_pressed)) {
+        if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {
           if (! sudo_kill) {
              // printf("Killing: %s\n", AppToKill);
-             if (state.start_jsdevice == state.back_jsdevice) {
+             if (state.start_jsdevice == state.hotkey_jsdevice) {
                 system((" killall  '" + std::string(AppToKill) + "' ").c_str());
                 system("show_splash.sh exit");
                sleep(3);
@@ -824,7 +826,7 @@ bool handleEvent(const SDL_Event& event)
             exit(0); 
             }             
           } else {
-             if (state.start_jsdevice == state.back_jsdevice) {
+             if (state.start_jsdevice == state.hotkey_jsdevice) {
                 system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
                sleep(3);
                exit(0);
@@ -1009,6 +1011,11 @@ int main(int argc, char* argv[])
       } else {
         config_mode = true;
         config_file = "/emuelec/configs/gptokeyb/default.gptk";
+      }
+    } else if (strcmp(argv[ii], "-hotkey") == 0) {
+      if (ii + 1 < argc) {
+        hotkey_override = true;
+        hotkey_code = argv[++ii];
       }
     } else if ((strcmp(argv[ii], "1") == 0) || (strcmp(argv[ii], "-1") == 0) || (strcmp(argv[ii], "-k") == 0)) {
       if (ii + 1 < argc) { 
