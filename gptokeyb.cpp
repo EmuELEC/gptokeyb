@@ -995,6 +995,12 @@ int main(int argc, char* argv[])
   config_mode = true;
   config_file = "/emuelec/configs/gptokeyb/default.gptk";
 
+  // Add hotkey environment variable if available
+  if (char* env_hotkey = SDL_getenv("HOTKEY")) {
+    hotkey_override = true;
+    hotkey_code = env_hotkey;
+  }
+
   if (argc > 1) {
     config_mode = false;
     config_file = "";
