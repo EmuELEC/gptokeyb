@@ -597,26 +597,26 @@ void setupFakeXbox360Device(uinput_user_dev& device, int fd)
     ioctl(fd, UI_SET_KEYBIT, BTN_SELECT) ||
     ioctl(fd, UI_SET_KEYBIT, BTN_START) || ioctl(fd, UI_SET_KEYBIT, BTN_MODE) ||
     // absolute (sticks)
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_LEFTX) ||
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_LEFTY) ||
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_RIGHTX) ||
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_RIGHTY) ||
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_TRIGGERLEFT) ||
-    ioctl(fd, UI_SET_ABSBIT, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) ||
+    ioctl(fd, UI_SET_ABSBIT, ABS_X) ||
+    ioctl(fd, UI_SET_ABSBIT, ABS_Y) ||
+    ioctl(fd, UI_SET_ABSBIT, ABS_RX) ||
+    ioctl(fd, UI_SET_ABSBIT, ABS_RY) ||
+    ioctl(fd, UI_SET_ABSBIT, ABS_Z) ||
+    ioctl(fd, UI_SET_ABSBIT, ABS_RZ) ||
     ioctl(fd, UI_SET_ABSBIT, ABS_HAT0X) ||
     ioctl(fd, UI_SET_ABSBIT, ABS_HAT0Y)) {
     printf("Failed to configure fake Xbox 360 controller\n");
     exit(-1);
   }
 
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_LEFTX, -32768, 32767, 16, 128);
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_LEFTY, -32768, 32767, 16, 128);
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_RIGHTX, -32768, 32767, 16, 128);
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_RIGHTY, -32768, 32767, 16, 128);
+  UINPUT_SET_ABS_P(&device, ABS_X, -32768, 32767, 16, 128);
+  UINPUT_SET_ABS_P(&device, ABS_Y, -32768, 32767, 16, 128);
+  UINPUT_SET_ABS_P(&device, ABS_RX, -32768, 32767, 16, 128);
+  UINPUT_SET_ABS_P(&device, ABS_RY, -32768, 32767, 16, 128);
   UINPUT_SET_ABS_P(&device, ABS_HAT0X, -1, 1, 0, 0);
   UINPUT_SET_ABS_P(&device, ABS_HAT0Y, -1, 1, 0, 0);
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_TRIGGERLEFT, 0, 255, 0, 0);
-  UINPUT_SET_ABS_P(&device, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, 0, 255, 0, 0);
+  UINPUT_SET_ABS_P(&device, ABS_Z, 0, 255, 0, 0);
+  UINPUT_SET_ABS_P(&device, ABS_RZ, 0, 255, 0, 0);
 }
 
 bool handleEvent(const SDL_Event& event)
