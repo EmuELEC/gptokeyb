@@ -54,6 +54,8 @@
 #include <SDL.h>
 
 #define CONFIG_ARG_MAX_BYTES 128
+#define SDL_DEFAULT_REPEAT_DELAY 500
+#define SDL_DEFAULT_REPEAT_INTERVAL 30
 
 struct config_option
 {
@@ -134,6 +136,9 @@ struct
   bool right_analog_was_right = false;
   bool l2_was_pressed = false;
   bool r2_was_pressed = false;
+  Uint32 key_repeat_interval = SDL_DEFAULT_REPEAT_INTERVAL; // (33 / 10) * 10;  /* To round it down to the nearest 10 ms */
+  short key_to_repeat = 0;
+  SDL_TimerID key_repeat_timer_id = 0;
 } state;
 
 struct
@@ -526,6 +531,24 @@ void emitKey(int code, bool is_pressed)
   emit(EV_SYN, SYN_REPORT, 0);
 }
 
+Uint32 repeatKeyCallback(Uint32 interval, void *param)
+{
+    int key_code = *reinterpret_cast<int*>(param);
+    emitKey(key_code, 0);
+    emitKey(key_code, 1);
+    return(interval);
+}
+void setKeyRepeat(int code, bool is_pressed)
+{
+  if (is_pressed) {
+    state.key_repeat_timer_id=SDL_AddTimer(state.key_repeat_interval, repeatKeyCallback, &code);
+    state.key_to_repeat=code;
+  } else {
+    SDL_RemoveTimer( state.key_repeat_timer_id );
+    state.key_repeat_timer_id=0;
+    state.key_to_repeat=0;
+  }
+}
 void emitAxisMotion(int code, int value)
 {
   emit(EV_ABS, code, value);
@@ -735,18 +758,30 @@ bool handleEvent(const SDL_Event& event)
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
             emitKey(config.left, is_pressed);
+            if ((is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.left))){
+                setKeyRepeat(config.left, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_UP:
             emitKey(config.up, is_pressed);
+            if ((is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.up))){
+                setKeyRepeat(config.up, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
             emitKey(config.right, is_pressed);
+            if ((is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.right))){
+                setKeyRepeat(config.right, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
             emitKey(config.down, is_pressed);
+            if ((is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.down))){
+                setKeyRepeat(config.down, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_A:
@@ -1079,7 +1114,7 @@ int main(int argc, char* argv[])
   }
 
   // SDL initialization and main loop
-  if (SDL_Init(SDL_INIT_GAMECONTROLLER) != 0) {
+  if (SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_TIMER) != 0) {
     printf("SDL_Init() failed: %s\n", SDL_GetError());
     return -1;
   }
@@ -1103,7 +1138,7 @@ int main(int argc, char* argv[])
       running = handleEvent(event);
     }
   }
-
+  SDL_RemoveTimer( state.key_repeat_timer_id );
   SDL_Quit();
 
   /*
