@@ -90,7 +90,7 @@ std::vector<config_option> parseConfigFile(const char* path)
         result.pop_back();
         continue;
       }
-
+      
       perror("fscanf()");
       result.pop_back();
       continue;
@@ -136,7 +136,6 @@ struct
   bool right_analog_was_right = false;
   bool l2_was_pressed = false;
   bool r2_was_pressed = false;
-  Uint32 key_repeat_interval = SDL_DEFAULT_REPEAT_INTERVAL; // (33 / 10) * 10;  /* To round it down to the nearest 10 ms */
   short key_to_repeat = 0;
   SDL_TimerID key_repeat_timer_id = 0;
 } state;
@@ -144,22 +143,39 @@ struct
 struct
 {
   short back = KEY_ESC;
+  bool back_repeat = false;
   short start = KEY_ENTER;
+  bool start_repeat = false;
   short guide = KEY_ENTER;
+  bool guide_repeat = false;
   short a = KEY_X;
+  bool a_repeat = false;
   short b = KEY_Z;
+  bool b_repeat = false;
   short x = KEY_C;
+  bool x_repeat = false;
   short y = KEY_A;
+  bool y_repeat = false;
   short l1 = KEY_RIGHTSHIFT;
+  bool l1_repeat = false;
   short l2 = KEY_HOME;
+  bool l2_repeat = false;
   short l3 = BTN_LEFT;
+  bool l3_repeat = false;
   short r1 = KEY_LEFTSHIFT;
+  bool r1_repeat = false;
   short r2 = KEY_END;
+  bool r2_repeat = false;
   short r3 = BTN_RIGHT;
+  bool r3_repeat = false;
   short up = KEY_UP;
+  bool up_repeat = false;
   short down = KEY_DOWN;
+  bool down_repeat = false;
   short left = KEY_LEFT;
+  bool left_repeat = false;
   short right = KEY_RIGHT;
+  bool right_repeat = false;
 
   bool left_analog_as_mouse = false;
   bool right_analog_as_mouse = false;
@@ -179,6 +195,8 @@ struct
   int fake_mouse_scale = 512;
   int fake_mouse_delay = 16;
 
+  Uint32 key_repeat_interval = SDL_DEFAULT_REPEAT_INTERVAL; // (33 / 10) * 10;  /* To round it down to the nearest 10 ms */
+  Uint32 key_repeat_delay = SDL_DEFAULT_REPEAT_DELAY; 
 } config;
 
 // convert ASCII chars to key codes
@@ -243,7 +261,11 @@ short char_to_keycode(const char* str)
     keycode = KEY_CAPSLOCK;
   else if (strcmp(str, "tab") == 0)
     keycode = KEY_TAB;
-
+  else if (strcmp(str, "pause") == 0)
+    keycode = KEY_PAUSE;
+  else if (strcmp(str, "menu") == 0)
+    keycode = KEY_MENU;
+    
   // normal keyboard
   else if (strcmp(str, "a") == 0)
     keycode = KEY_A;
@@ -417,39 +439,107 @@ void readConfigFile(const char* config_file)
   const auto parsedConfig = parseConfigFile(config_file);
   for (const auto& co : parsedConfig) {
     if (strcmp(co.key, "back") == 0) {
-      config.back = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.back_repeat = true;
+        } else {
+            config.back = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "guide") == 0) {
-      config.guide = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.guide_repeat = true;
+        } else {
+            config.guide = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "start") == 0) {
-      config.start = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.start_repeat = true;
+        } else {
+            config.start = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "a") == 0) {
-      config.a = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.a_repeat = true;
+        } else {
+            config.a = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "b") == 0) {
-      config.b = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.b_repeat = true;
+        } else {
+            config.b = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "x") == 0) {
-      config.x = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.x_repeat = true;
+        } else {
+            config.x = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "y") == 0) {
-      config.y = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.y_repeat = true;
+        } else {
+            config.y = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "l1") == 0) {
-      config.l1 = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.l1_repeat = true;
+        } else {
+            config.l1 = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "l2") == 0) {
-      config.l2 = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.l2_repeat = true;
+        } else {
+            config.l2 = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "l3") == 0) {
-      config.l3 = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.l3_repeat = true;
+        } else {
+            config.l3 = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "r1") == 0) {
-      config.r1 = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.r1_repeat = true;
+        } else {
+            config.r1 = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "r2") == 0) {
-      config.r2 = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.r2_repeat = true;
+        } else {
+            config.r2 = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "r3") == 0) {
-      config.r3 = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.r3_repeat = true;
+        } else {
+            config.r3 = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "up") == 0) {
-      config.up = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.up_repeat = true;
+        } else {
+            config.up = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "down") == 0) {
-      config.down = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.down_repeat = true;
+        } else {
+            config.down = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "left") == 0) {
-      config.left = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.left_repeat = true;
+        } else {
+            config.left = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "right") == 0) {
-      config.right = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.right_repeat = true;
+        } else {
+            config.right = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "left_analog_up") == 0) {
       if (strcmp(co.value, "mouse_movement_up") == 0) {
         config.left_analog_as_mouse = true;
@@ -484,6 +574,10 @@ void readConfigFile(const char* config_file)
       config.fake_mouse_scale = atoi(co.value);
     } else if (strcmp(co.key, "mouse_delay") == 0) {
       config.fake_mouse_delay = atoi(co.value);
+    } else if (strcmp(co.key, "repeat_delay") == 0) {
+      config.key_repeat_delay = atoi(co.value);
+    } else if (strcmp(co.key, "repeat_interval") == 0) {
+      config.key_repeat_interval = atoi(co.value);
     }
   }
 }
@@ -536,12 +630,13 @@ Uint32 repeatKeyCallback(Uint32 interval, void *param)
     int key_code = *reinterpret_cast<int*>(param);
     emitKey(key_code, 0);
     emitKey(key_code, 1);
+    interval = config.key_repeat_interval; // key repeats according to repeat interval; initial interval is set to delay
     return(interval);
 }
 void setKeyRepeat(int code, bool is_pressed)
 {
   if (is_pressed) {
-    state.key_repeat_timer_id=SDL_AddTimer(state.key_repeat_interval, repeatKeyCallback, &code);
+    state.key_repeat_timer_id=SDL_AddTimer(config.key_repeat_delay, repeatKeyCallback, &code); // for a new repeat, use repeat delay for first time, then switch to repeat interval
     state.key_to_repeat=code;
   } else {
     SDL_RemoveTimer( state.key_repeat_timer_id );
@@ -758,58 +853,79 @@ bool handleEvent(const SDL_Event& event)
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
             emitKey(config.left, is_pressed);
-            if ((is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.left))){
+            if ((config.left_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.left))) {
                 setKeyRepeat(config.left, is_pressed);
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_UP:
             emitKey(config.up, is_pressed);
-            if ((is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.up))){
+            if ((config.up_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.up))){
                 setKeyRepeat(config.up, is_pressed);
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
             emitKey(config.right, is_pressed);
-            if ((is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.right))){
+            if ((config.right_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.right))){
                 setKeyRepeat(config.right, is_pressed);
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
             emitKey(config.down, is_pressed);
-            if ((is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.down))){
+            if ((config.down_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.down))){
                 setKeyRepeat(config.down, is_pressed);
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_A:
             emitKey(config.a, is_pressed);
+            if ((config.a_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.a))){
+                setKeyRepeat(config.a, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_B:
             emitKey(config.b, is_pressed);
+            if ((config.b_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.b))){
+                setKeyRepeat(config.b, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_X:
             emitKey(config.x, is_pressed);
+            if ((config.x_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.x))){
+                setKeyRepeat(config.x, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_Y:
             emitKey(config.y, is_pressed);
+            if ((config.y_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.y))){
+                setKeyRepeat(config.y, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
             emitKey(config.l1, is_pressed);
+            if ((config.l1_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l1))){
+                setKeyRepeat(config.l1, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
             emitKey(config.r1, is_pressed);
+            if ((config.r1_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.r1))){
+                setKeyRepeat(config.r1, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_LEFTSTICK:
             emitKey(config.l3, is_pressed);
+            if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
+                setKeyRepeat(config.l3, is_pressed);
+            }
             if (kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) {
                 state.hotkey_jsdevice = event.cdevice.which;
                 state.hotkey_pressed = is_pressed;
@@ -818,10 +934,16 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
             emitKey(config.r3, is_pressed);
+            if ((config.r3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.r3))){
+                setKeyRepeat(config.r3, is_pressed);
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_GUIDE:
             emitKey(config.guide, is_pressed);
+            if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
+                setKeyRepeat(config.guide, is_pressed);
+            }
             if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
@@ -830,6 +952,9 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
             emitKey(config.back, is_pressed);
+            if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
+                setKeyRepeat(config.back, is_pressed);
+            }
             if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
@@ -838,6 +963,9 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_START:
             emitKey(config.start, is_pressed);
+            if ((config.start_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.start))){
+                setKeyRepeat(config.start, is_pressed);
+            }
             if (kill_mode) {
                 state.start_jsdevice = event.cdevice.which;
                 state.start_pressed = is_pressed;
