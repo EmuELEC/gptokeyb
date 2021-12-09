@@ -973,6 +973,7 @@ bool handleEvent(const SDL_Event& event)
             break;
         }
         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {
+          SDL_RemoveTimer( state.key_repeat_timer_id );
           if (! sudo_kill) {
              // printf("Killing: %s\n", AppToKill);
              if (state.start_jsdevice == state.hotkey_jsdevice) {
