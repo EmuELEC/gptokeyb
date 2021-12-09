@@ -180,13 +180,21 @@ struct
   bool left_analog_as_mouse = false;
   bool right_analog_as_mouse = false;
   short left_analog_up = KEY_W;
+  bool left_analog_up_repeat = false;
   short left_analog_down = KEY_S;
+  bool left_analog_down_repeat = false;
   short left_analog_left = KEY_A;
+  bool left_analog_left_repeat = false;
   short left_analog_right = KEY_D;
+  bool left_analog_right_repeat = false;
   short right_analog_up = KEY_END;
+  bool right_analog_up_repeat = false;
   short right_analog_down = KEY_HOME;
+  bool right_analog_down_repeat = false;
   short right_analog_left = KEY_LEFT;
+  bool right_analog_left_repeat = false;
   short right_analog_right = KEY_RIGHT;
+  bool right_analog_right_repeat = false;
 
   int deadzone_y = 15000;
   int deadzone_x = 15000;
@@ -544,26 +552,58 @@ void readConfigFile(const char* config_file)
       if (strcmp(co.value, "mouse_movement_up") == 0) {
         config.left_analog_as_mouse = true;
       } else {
-        config.left_analog_up = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.left_analog_up_repeat = true;
+        } else {
+            config.left_analog_up = char_to_keycode(co.value);
+        }
       }
     } else if (strcmp(co.key, "left_analog_down") == 0) {
-      config.left_analog_down = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.left_analog_down_repeat = true;
+        } else {
+            config.left_analog_down = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "left_analog_left") == 0) {
-      config.left_analog_left = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.left_analog_left_repeat = true;
+        } else {
+            config.left_analog_left = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "left_analog_right") == 0) {
-      config.left_analog_right = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.left_analog_right_repeat = true;
+        } else {
+            config.left_analog_right = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "right_analog_up") == 0) {
       if (strcmp(co.value, "mouse_movement_up") == 0) {
         config.right_analog_as_mouse = true;
       } else {
-        config.right_analog_up = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.right_analog_up_repeat = true;
+        } else {
+            config.right_analog_up = char_to_keycode(co.value);
+        }
       }
     } else if (strcmp(co.key, "right_analog_down") == 0) {
-      config.right_analog_down = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.right_analog_down_repeat = true;
+        } else {
+            config.right_analog_down = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "right_analog_left") == 0) {
-      config.right_analog_left = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.right_analog_left_repeat = true;
+        } else {
+            config.right_analog_left = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "right_analog_right") == 0) {
-      config.right_analog_right = char_to_keycode(co.value);
+        if (strcmp(co.value, "repeat") == 0) {
+            config.right_analog_right_repeat = true;
+        } else {
+            config.right_analog_right = char_to_keycode(co.value);
+        }
     } else if (strcmp(co.key, "deadzone_y") == 0) {
       config.deadzone_y = atoi(co.value);
     } else if (strcmp(co.key, "deadzone_x") == 0) {
@@ -627,17 +667,18 @@ void emitKey(int code, bool is_pressed)
 
 Uint32 repeatKeyCallback(Uint32 interval, void *param)
 {
-    int key_code = *reinterpret_cast<int*>(param);
-    emitKey(key_code, 0);
-    emitKey(key_code, 1);
+    //timerCallback requires pointer parameter, but passing pointer to key_code for analog sticks doesn't work
+    int key_code = *reinterpret_cast<int*>(param); 
+    emitKey(key_code, false);
+    emitKey(key_code, true);
     interval = config.key_repeat_interval; // key repeats according to repeat interval; initial interval is set to delay
     return(interval);
 }
 void setKeyRepeat(int code, bool is_pressed)
 {
   if (is_pressed) {
-    state.key_repeat_timer_id=SDL_AddTimer(config.key_repeat_delay, repeatKeyCallback, &code); // for a new repeat, use repeat delay for first time, then switch to repeat interval
     state.key_to_repeat=code;
+    state.key_repeat_timer_id=SDL_AddTimer(config.key_repeat_delay, repeatKeyCallback, &state.key_to_repeat); // for a new repeat, use repeat delay for first time, then switch to repeat interval
   } else {
     SDL_RemoveTimer( state.key_repeat_timer_id );
     state.key_repeat_timer_id=0;
@@ -823,7 +864,7 @@ bool handleEvent(const SDL_Event& event)
             emitAxisMotion(ABS_HAT0X, is_pressed ? 1 : 0);
             break;
         }
-         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {
+         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {      
           if (! sudo_kill) {
              // printf("Killing: %s\n", AppToKill);
              if (state.start_jsdevice == state.hotkey_jsdevice) {
@@ -973,6 +1014,7 @@ bool handleEvent(const SDL_Event& event)
             break;
         }
         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {
+          SDL_RemoveTimer( state.key_repeat_timer_id );
           if (! sudo_kill) {
              // printf("Killing: %s\n", AppToKill);
              if (state.start_jsdevice == state.hotkey_jsdevice) {
@@ -1077,38 +1119,86 @@ bool handleEvent(const SDL_Event& event)
           state.mouseY = state.current_right_analog_y / config.fake_mouse_scale;
         } else {
           // Analogs trigger keys
+          
           handleAnalogTrigger(
             state.current_left_analog_y < 0,
             state.left_analog_was_up,
             config.left_analog_up);
+          if ((state.current_left_analog_y < 0 ) && config.left_analog_up_repeat && (state.key_to_repeat == 0)) {
+                setKeyRepeat(config.left_analog_up, true);
+            } else if ((state.current_left_analog_y == 0 ) && config.left_analog_up_repeat && (state.key_to_repeat == config.left_analog_up)) {
+                setKeyRepeat(config.left_analog_up, false);
+            }
+
           handleAnalogTrigger(
             state.current_left_analog_y > 0,
             state.left_analog_was_down,
             config.left_analog_down);
+          if ((state.current_left_analog_y > 0 ) && config.left_analog_down_repeat && (state.key_to_repeat == 0)) {
+                setKeyRepeat(config.left_analog_down, true);
+            } else if ((state.current_left_analog_y == 0 ) && config.left_analog_down_repeat && (state.key_to_repeat == config.left_analog_down)) {
+                setKeyRepeat(config.left_analog_down, false);
+            }
+
           handleAnalogTrigger(
             state.current_left_analog_x < 0,
             state.left_analog_was_left,
             config.left_analog_left);
+          if ((state.current_left_analog_x < 0 ) && config.left_analog_left_repeat && (state.key_to_repeat == 0)) {
+                setKeyRepeat(config.left_analog_left, true);
+            } else if ((state.current_left_analog_x == 0 ) && config.left_analog_left_repeat && (state.key_to_repeat == config.left_analog_left)) {
+                setKeyRepeat(config.left_analog_left, false);
+            }
+
           handleAnalogTrigger(
             state.current_left_analog_x > 0,
             state.left_analog_was_right,
             config.left_analog_right);
+          if ((state.current_left_analog_x > 0 ) && config.left_analog_right_repeat && (state.key_to_repeat == 0)) {
+                setKeyRepeat(config.left_analog_right, true);
+            } else if ((state.current_left_analog_x == 0 ) && config.left_analog_right_repeat && (state.key_to_repeat == config.left_analog_right)) {
+                setKeyRepeat(config.left_analog_right, false);
+            }
+
           handleAnalogTrigger(
             state.current_right_analog_y < 0,
             state.right_analog_was_up,
             config.right_analog_up);
+          if ((state.current_right_analog_y < 0 ) && config.right_analog_up_repeat && (state.key_to_repeat == 0)) {
+                setKeyRepeat(config.right_analog_up, true);
+            } else if ((state.current_right_analog_y == 0 ) && config.right_analog_up_repeat && (state.key_to_repeat == config.right_analog_up)) {
+                setKeyRepeat(config.right_analog_up, false);
+            }
+
           handleAnalogTrigger(
             state.current_right_analog_y > 0,
             state.right_analog_was_down,
             config.right_analog_down);
+          if ((state.current_right_analog_y > 0 ) && config.right_analog_down_repeat && (state.key_to_repeat == 0)) {
+                setKeyRepeat(config.right_analog_down, true);
+            } else if ((state.current_right_analog_y == 0 ) && config.right_analog_down_repeat && (state.key_to_repeat == config.right_analog_down)) {
+                setKeyRepeat(config.right_analog_down, false);
+            }
+
           handleAnalogTrigger(
             state.current_right_analog_x < 0,
             state.right_analog_was_left,
             config.right_analog_left);
+          if ((state.current_right_analog_x < 0 ) && config.right_analog_left_repeat && (state.key_to_repeat == 0)) {
+                setKeyRepeat(config.right_analog_left, true);
+            } else if ((state.current_right_analog_x == 0 ) && config.right_analog_left_repeat && (state.key_to_repeat == config.right_analog_left)) {
+                setKeyRepeat(config.right_analog_left, false);
+            }
+
           handleAnalogTrigger(
             state.current_right_analog_x > 0,
             state.right_analog_was_right,
             config.right_analog_right);
+          if ((state.current_right_analog_x > 0 ) && config.right_analog_right_repeat && (state.key_to_repeat == 0)) {
+                setKeyRepeat(config.right_analog_right, true);
+            } else if ((state.current_right_analog_x == 0 ) && config.right_analog_right_repeat && (state.key_to_repeat == config.right_analog_right)) {
+                setKeyRepeat(config.right_analog_right, false);
+            }
         }
 
         handleAnalogTrigger(
