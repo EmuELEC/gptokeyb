@@ -72,7 +72,7 @@ fake_mouse_delay = 16
 ```
 A simple keyboard key repeat function has been added that emulates automatic repeat of a keyboard key, once it has been held for at least an initial `delay`, at a regular `interval`. Key repeat works for one key at a time only (the first key that is pressed and held is repeated, and holding another key will not cause that to repeat, unless the first key is released). Key repeat has not been set up to work for analog triggers (L2/R2) at the moment.
 
-The default delay and interval are based on SDL1.2 standard
+The default delay and interval are based on SDL1.2 standard and can be adjusted with `repeat_delay = ` and `repeat_interval = `
 ```SDL_DEFAULT_REPEAT_DELAY 500
 SDL_DEFAULT_REPEAT_INTERVAL 30
 ```
