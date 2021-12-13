@@ -1413,6 +1413,7 @@ int main(int argc, char* argv[])
             printf("text input preset almost %s\n", config.text_input_preset);
         } else {
             printf("text input preset is not set\n");
+            textinput_mode = false;
         }
       }      
      }
