@@ -107,6 +107,7 @@ bool kill_mode = false;
 bool sudo_kill = false; //allow sudo kill instead of killall for non-emuelec systems
 bool openbor_mode = false;
 bool xbox360_mode = false;
+bool textinput_mode = false;    
 char* AppToKill;
 bool config_mode = false;
 bool hotkey_override = false;
@@ -116,6 +117,7 @@ struct
 {
   int hotkey_jsdevice;
   int start_jsdevice;
+  int textinputtrigger_jsdevice; // to trigger text input preset
   int mouseX = 0;
   int mouseY = 0;
   int current_left_analog_x = 0;
@@ -126,6 +128,7 @@ struct
   int current_r2 = 0;
   bool hotkey_pressed = false;
   bool start_pressed = false;
+  bool textinputtrigger_pressed = false;
   bool left_analog_was_up = false;
   bool left_analog_was_down = false;
   bool left_analog_was_left = false;
@@ -205,6 +208,8 @@ struct
 
   Uint32 key_repeat_interval = SDL_DEFAULT_REPEAT_INTERVAL; // (33 / 10) * 10;  /* To round it down to the nearest 10 ms */
   Uint32 key_repeat_delay = SDL_DEFAULT_REPEAT_DELAY; 
+  
+  char* text_input_preset;
 } config;
 
 // convert ASCII chars to key codes
@@ -618,7 +623,7 @@ void readConfigFile(const char* config_file)
       config.key_repeat_delay = atoi(co.value);
     } else if (strcmp(co.key, "repeat_interval") == 0) {
       config.key_repeat_interval = atoi(co.value);
-    }
+    } 
   }
 }
 
@@ -663,6 +668,62 @@ void emitKey(int code, bool is_pressed)
 {
   emit(EV_KEY, code, is_pressed ? 1 : 0);
   emit(EV_SYN, SYN_REPORT, 0);
+}
+
+void processKeys()
+{
+  int lenText = strlen(config.text_input_preset);
+  char str[2];
+  char lowerstr[2];
+  char upperstr[2];
+  char lowerchar;
+  char upperchar;
+  bool uppercase = false;
+  for (int ii = 0; ii < lenText; ii++) {  
+    if (config.text_input_preset[ii] != '\0') {
+        memcpy( str, &config.text_input_preset[ii], 1 );        
+        str[1] = '\0';
+
+        lowerchar = std::tolower(config.text_input_preset[ii], std::locale());
+        upperchar = std::toupper(config.text_input_preset[ii], std::locale());
+
+        memcpy( upperstr, &upperchar, 1 );        
+        upperstr[1] = '\0';
+        memcpy( lowerstr, &lowerchar, 1 );        
+        lowerstr[1] = '\0';
+        uppercase = (strcmp(upperstr,str) == 0);
+
+        int code = char_to_keycode(lowerstr);
+
+        if (strcmp(str, " ") == 0) {
+            code = KEY_SPACE;
+            uppercase = false;
+        } else if (strcmp(str, "_") == 0) {
+            code = KEY_MINUS;
+            uppercase = true;
+        } else if (strcmp(str, "-") == 0) {
+            code = KEY_MINUS;
+            uppercase = true;
+        } else if (strcmp(str, ".") == 0) {
+            code = KEY_DOT;
+            uppercase = false;
+        } else if (strcmp(str, ",") == 0) {
+            code = KEY_COMMA;
+            uppercase = false;
+        }
+        
+        if (uppercase) { //capitalise capital letters by holding shift
+            emitKey(KEY_LEFTSHIFT, true);
+        }
+        emitKey(code, true);
+        SDL_Delay(config.fake_mouse_delay);
+        emitKey(code, false);
+        SDL_Delay(config.fake_mouse_delay);
+        if (strcmp(upperstr,str) == 0) { //release shift if held
+            emitKey(KEY_LEFTSHIFT, false);
+        }
+    } // if valid character
+  } //for
 }
 
 Uint32 repeatKeyCallback(Uint32 interval, void *param)
@@ -891,6 +952,14 @@ bool handleEvent(const SDL_Event& event)
        
       } else {
         // Config / default mode
+/*        if (textinput_mode) {
+//        switch (event.cbutton.button) {
+//          case SDL_CONTROLLER_BUTTON_A:
+//            processKeys();
+//            break;
+//          }
+//        textinput_mode = false;        
+        } else  { */
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
             emitKey(config.left, is_pressed);
@@ -910,6 +979,10 @@ bool handleEvent(const SDL_Event& event)
             emitKey(config.right, is_pressed);
             if ((config.right_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.right))){
                 setKeyRepeat(config.right, is_pressed);
+            }
+            if (textinput_mode) {
+                state.textinputtrigger_jsdevice = event.cdevice.which;
+                state.textinputtrigger_pressed = is_pressed;
             }
             break;
 
@@ -967,7 +1040,7 @@ bool handleEvent(const SDL_Event& event)
             if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
                 setKeyRepeat(config.l3, is_pressed);
             }
-            if (kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) {
+            if ((kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) || (textinput_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0))) {
                 state.hotkey_jsdevice = event.cdevice.which;
                 state.hotkey_pressed = is_pressed;
             }
@@ -985,7 +1058,7 @@ bool handleEvent(const SDL_Event& event)
             if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
                 setKeyRepeat(config.guide, is_pressed);
             }
-            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0))) {
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0)) || (textinput_mode && !(hotkey_override)) || (textinput_mode && (strcmp(hotkey_code, "guide") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
             }
@@ -996,7 +1069,7 @@ bool handleEvent(const SDL_Event& event)
             if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
                 setKeyRepeat(config.back, is_pressed);
             }
-            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0))) {
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0)) || (textinput_mode && !(hotkey_override)) || (textinput_mode && (strcmp(hotkey_code, "back") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
             }
@@ -1029,7 +1102,7 @@ bool handleEvent(const SDL_Event& event)
                    (" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
                }
             exit(0); 
-            }             
+            }   
           } else {
              if (state.start_jsdevice == state.hotkey_jsdevice) {
                 system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
@@ -1037,7 +1110,18 @@ bool handleEvent(const SDL_Event& event)
                exit(0);
              }
            } // sudo kill
-        } //kill mode
+        } //kill mode 
+        else if ((textinput_mode) && (state.textinputtrigger_pressed && state.hotkey_pressed)) {
+            printf("text input press\n");
+            if (state.hotkey_jsdevice == state.textinputtrigger_jsdevice) {
+                if (config.text_input_preset != NULL) {
+                    printf("text input process %s\n", config.text_input_preset);
+                    processKeys();
+                    //emitKey(char_to_keycode("r"), true);
+                    //emitKey(char_to_keycode("r"), false);
+                }
+            }         
+          } 
       } //xbox or config/default
     } break;
 
@@ -1254,6 +1338,12 @@ int main(int argc, char* argv[])
     hotkey_code = env_hotkey;
   }
 
+  // Add textinput_preset environment variable if available
+  if (char* env_textinput = SDL_getenv("TEXTINPUT")) {
+    textinput_mode = true;
+    config.text_input_preset = env_textinput;
+  }
+
   if (argc > 1) {
     config_mode = false;
     config_file = "";
@@ -1288,7 +1378,7 @@ int main(int argc, char* argv[])
         AppToKill = argv[++ii];
       }
       
-    }
+    } 
   }
 
   // Create fake input device (not needed in kill mode)
@@ -1317,7 +1407,15 @@ int main(int argc, char* argv[])
         printf("Using ConfigFile %s\n", config_file);
         readConfigFile(config_file);
       }
-    }
+     // if we are in textinput mode, note the text preset
+      if (textinput_mode) {
+        if (config.text_input_preset != NULL) {
+            printf("text input preset almost %s\n", config.text_input_preset);
+        } else {
+            printf("text input preset is not set\n");
+        }
+      }      
+     }
     // Create input device into input sub-system
     write(uinp_fd, &uidev, sizeof(uidev));
 
