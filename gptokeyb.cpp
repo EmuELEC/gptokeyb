@@ -107,7 +107,8 @@ bool kill_mode = false;
 bool sudo_kill = false; //allow sudo kill instead of killall for non-emuelec systems
 bool openbor_mode = false;
 bool xbox360_mode = false;
-bool textinput_mode = false;    
+bool textinputpreset_mode = false; 
+bool textinputconfirm_mode = false;   
 char* AppToKill;
 bool config_mode = false;
 bool hotkey_override = false;
@@ -117,7 +118,8 @@ struct
 {
   int hotkey_jsdevice;
   int start_jsdevice;
-  int textinputtrigger_jsdevice; // to trigger text input preset
+  int textinputpresettrigger_jsdevice; // to trigger text input preset
+  int textinputconfirmtrigger_jsdevice; // to trigger text input confirm via Enter key
   int mouseX = 0;
   int mouseY = 0;
   int current_left_analog_x = 0;
@@ -128,7 +130,8 @@ struct
   int current_r2 = 0;
   bool hotkey_pressed = false;
   bool start_pressed = false;
-  bool textinputtrigger_pressed = false;
+  bool textinputpresettrigger_pressed = false;
+  bool textinputconfirmtrigger_pressed = false;
   bool left_analog_was_up = false;
   bool left_analog_was_down = false;
   bool left_analog_was_left = false;
@@ -966,6 +969,10 @@ bool handleEvent(const SDL_Event& event)
             if ((config.left_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.left))) {
                 setKeyRepeat(config.left, is_pressed);
             }
+            if (textinputpreset_mode) {
+                state.textinputpresettrigger_jsdevice = event.cdevice.which;
+                state.textinputpresettrigger_pressed = is_pressed;
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_UP:
@@ -980,9 +987,9 @@ bool handleEvent(const SDL_Event& event)
             if ((config.right_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.right))){
                 setKeyRepeat(config.right, is_pressed);
             }
-            if (textinput_mode) {
-                state.textinputtrigger_jsdevice = event.cdevice.which;
-                state.textinputtrigger_pressed = is_pressed;
+            if (textinputpreset_mode) {
+                state.textinputconfirmtrigger_jsdevice = event.cdevice.which;
+                state.textinputconfirmtrigger_pressed = is_pressed;
             }
             break;
 
@@ -1040,7 +1047,7 @@ bool handleEvent(const SDL_Event& event)
             if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
                 setKeyRepeat(config.l3, is_pressed);
             }
-            if ((kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) || (textinput_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0))) {
+            if ((kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) || (textinputpreset_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0))) {
                 state.hotkey_jsdevice = event.cdevice.which;
                 state.hotkey_pressed = is_pressed;
             }
@@ -1058,7 +1065,7 @@ bool handleEvent(const SDL_Event& event)
             if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
                 setKeyRepeat(config.guide, is_pressed);
             }
-            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0)) || (textinput_mode && !(hotkey_override)) || (textinput_mode && (strcmp(hotkey_code, "guide") == 0))) {
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "guide") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
             }
@@ -1069,7 +1076,7 @@ bool handleEvent(const SDL_Event& event)
             if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
                 setKeyRepeat(config.back, is_pressed);
             }
-            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0)) || (textinput_mode && !(hotkey_override)) || (textinput_mode && (strcmp(hotkey_code, "back") == 0))) {
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "back") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
             }
@@ -1111,15 +1118,23 @@ bool handleEvent(const SDL_Event& event)
              }
            } // sudo kill
         } //kill mode 
-        else if ((textinput_mode) && (state.textinputtrigger_pressed && state.hotkey_pressed)) {
-            printf("text input press\n");
-            if (state.hotkey_jsdevice == state.textinputtrigger_jsdevice) {
+        else if (textinputpreset_mode && state.textinputpresettrigger_pressed && state.hotkey_pressed) {
+            printf("text input preset pressed\n");
+            if (state.hotkey_jsdevice == state.textinputpresettrigger_jsdevice) {
                 if (config.text_input_preset != NULL) {
-                    printf("text input process %s\n", config.text_input_preset);
+                    printf("text input preset processing %s\n", config.text_input_preset);
                     processKeys();
                     //emitKey(char_to_keycode("r"), true);
                     //emitKey(char_to_keycode("r"), false);
                 }
+            } 
+         }
+         else if (textinputpreset_mode && state.textinputconfirmtrigger_pressed && state.hotkey_pressed) {     
+            if (state.hotkey_jsdevice == state.textinputconfirmtrigger_jsdevice) {
+                printf("text input enter key\n");
+                emitKey(char_to_keycode("enter"), true);
+                SDL_Delay(15);
+                emitKey(char_to_keycode("enter"), false);
             }         
           } 
       } //xbox or config/default
@@ -1340,7 +1355,7 @@ int main(int argc, char* argv[])
 
   // Add textinput_preset environment variable if available
   if (char* env_textinput = SDL_getenv("TEXTINPUT")) {
-    textinput_mode = true;
+    textinputpreset_mode = true;
     config.text_input_preset = env_textinput;
   }
 
@@ -1407,13 +1422,13 @@ int main(int argc, char* argv[])
         printf("Using ConfigFile %s\n", config_file);
         readConfigFile(config_file);
       }
-     // if we are in textinput mode, note the text preset
-      if (textinput_mode) {
+     // if we are in textinput preset mode, note the text preset
+      if (textinputpreset_mode) {
         if (config.text_input_preset != NULL) {
-            printf("text input preset almost %s\n", config.text_input_preset);
+            printf("text input preset is %s\n", config.text_input_preset);
         } else {
             printf("text input preset is not set\n");
-            textinput_mode = false;
+            //textinputpreset_mode = false;   removed so that Enter key can be pressed
         }
       }      
      }
