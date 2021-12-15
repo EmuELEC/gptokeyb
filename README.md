@@ -104,10 +104,10 @@ left_analog_right = repeat
 ```
 
 ### Text Entry Options
-Text Entry preset mode is activated by `TEXTINPUTPRESET` environment variable whereby a name preset can be easily entered whenever a game displays a text prompt. When Text Entry is triggered with `HOTKEY+D-PAD LEFT`, the preset text is entered as a series of key strokes.
+Text Entry preset mode is enabled by `TEXTINPUTPRESET` environment variable whereby a name preset can be easily entered whenever a game displays a text prompt. When Text Entry is triggered with `HOTKEY+D-PAD LEFT`, the preset text is entered as a series of key strokes.
 
 Text Entry preset mode also assigns `HOTKEY+D-PAD RIGHT` to send `ENTER`.
 
-Interactive Text Entry mode is activated by launching GPtoKEYB with command line option `"textinput"` and triggered with `HOTKEY+D-PAD DOWN`. Once triggered, Interactive Text Entry mode works similarly to entering initials for game highscores, with `D-PAD UP/DOWN` switching between options for the currently selected character, `D-PAD RIGHT` moving to next character, `D-PAD LEFT` deleting and moving back one character, `SELECT/HOTKEY` cancelling interactive text entry and `START` sending `ENTER KEY` to confirm and exit interactive text entry. 
+Interactive Text Entry mode is enabled by launching GPtoKEYB with command line option `"textinput"` and triggered with `HOTKEY+D-PAD DOWN`. Once activated, Interactive Text Entry mode works similarly to entering initials for game highscores, with `D-PAD UP/DOWN` switching between options for the currently selected character, `D-PAD RIGHT` moving to next character, `D-PAD LEFT` deleting and moving back one character, `SELECT/HOTKEY` cancelling interactive text entry, and `START` sending `ENTER KEY` to confirm and exit interactive text entry. 
 
 Interactive Text Entry relies on the game providing a text prompt and sends key strokes to add and change characters, so it is only useful in these situations. Interactive Text Entry is automatically exited when either `SELECT`, `HOTKEY` or `START` are pressed, to minimise issues by accidentally triggering this mode.

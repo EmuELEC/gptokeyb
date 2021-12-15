@@ -1204,7 +1204,11 @@ bool handleEvent(const SDL_Event& event)
             
           case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: //add one more character
             if (is_pressed) {
-              current_character++;
+              if (character_set[current_key[current_character]] == KEY_SPACE) {
+                current_key[++current_character] = 0; // use capitals after a space
+              } else {
+                current_character++;
+              }
               if (current_character < maxChars) {
                 addTextInputCharacter();
               } else { // reached limit of characters
