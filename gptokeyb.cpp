@@ -961,7 +961,7 @@ Uint32 repeatKeyCallback(Uint32 interval, void *param)
     //timerCallback requires pointer parameter, but passing pointer to key_code for analog sticks doesn't work
     int key_code = *reinterpret_cast<int*>(param); 
     emitKey(key_code, false);
-    emitKey(key_code, true);
+    emitKey(key_code, true); 
     interval = config.key_repeat_interval; // key repeats according to repeat interval; initial interval is set to delay
     return(interval);
 }
@@ -1678,7 +1678,7 @@ int main(int argc, char* argv[])
   }
 
   // Add textinput_preset environment variable if available
-  if (char* env_textinput = SDL_getenv("TEXTINPUT")) {
+  if (char* env_textinput = SDL_getenv("TEXTINPUTPRESET")) {
     textinputpreset_mode = true;
     config.text_input_preset = env_textinput;
   }

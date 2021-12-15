@@ -17,8 +17,14 @@ gptokeyb provides a kill switch for an application and mapping of gamepad button
 `SDL_GAMECONTROLLERCONFIG_FILE` must be set so the gamepad buttons are properly assigned within gptokeyb, e.g. `SDL_GAMECONTROLLERCONFIG_FILE="./gamecontrollerdb.txt"`
 `SDL_GAMECONTROLLERCONFIG_FILE` is automatically set in Emuelec
 
+`export HOTKEY` sets the button used as hotkey. `BACK` button is automatically selected as hotkey, unless overridden by `HOTKEY` environment variable
+
+`export TEXTINPUT="my name"` assigns text as preset for input so that `my name` is automatically entered, once triggered
+
 ### Command Line Options
 `xbox360` selects xbox360 joystick mode
+
+`textinput` select interactive text input mode (see below)
 
 `-c <config_file_path_and_name.gptk>` specifies button mapping for keyboard and mouse functions, e.g. `-c "./app.gptk"`
 
@@ -77,7 +83,7 @@ The default delay and interval are based on SDL1.2 standard and can be adjusted 
 SDL_DEFAULT_REPEAT_INTERVAL 30
 ```
 
-Key repeat is configured by added `gamepad_button = repeat` as a separate line, in addition to the line `gamepad_button = keyboard key`. The following assigns arrow keys with key repeat to the gamepad d-pad and left analog stick.
+Key repeat is configured by adding `gamepad_button = repeat` as a separate line, in addition to the line `gamepad_button = keyboard key`. The following assigns arrow keys with key repeat to the gamepad d-pad and left analog stick.
 ```
 up = up
 up = repeat
@@ -96,3 +102,12 @@ left_analog_left = repeat
 left_analog_right = right
 left_analog_right = repeat
 ```
+
+### Text Entry Options
+Text Entry preset mode is activated by `TEXTINPUTPRESET` environment variable whereby a name preset can be easily entered whenever a game displays a text prompt. When Text Entry is triggered with `HOTKEY+D-PAD LEFT`, the preset text is entered as a series of key strokes.
+
+Text Entry preset mode also assigns `HOTKEY+D-PAD RIGHT` to send `ENTER`.
+
+Interactive Text Entry mode is activated by launching GPtoKEYB with command line option `"textinput"` and triggered with `HOTKEY+D-PAD DOWN`. Once triggered, Interactive Text Entry mode works similarly to entering initials for game highscores, with `D-PAD UP/DOWN` switching between options for the currently selected character, `D-PAD RIGHT` moving to next character, `D-PAD LEFT` deleting and moving back one character, `SELECT/HOTKEY` cancelling interactive text entry and `START` sending `ENTER KEY` to confirm and exit interactive text entry. 
+
+Interactive Text Entry relies on the game providing a text prompt and sends key strokes to add and change characters, so it is only useful in these situations. Interactive Text Entry is automatically exited when either `SELECT`, `HOTKEY` or `START` are pressed, to minimise issues by accidentally triggering this mode.
