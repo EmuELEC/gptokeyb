@@ -466,13 +466,12 @@ short char_to_keycode(const char* str)
 
 void initialiseCharacters()
 {
-  int first_lowercase = 1;
-  if (!(textinputinteractive_noautocapitals)) {
-    current_key[0] = 0; // start with upper case for 1st character
+  if (textinputinteractive_noautocapitals) {
+    current_key[0] = 26; // if environment variable has been set to disable capitalisation of first characters start with all lower case  
   } else {
-    first_lowercase = 0; // unless environment variable has been set to disable capitalisation of first characters
+    current_key[0] = 0; // otherwise start with upper case for 1st character
   }
-  for (int ii = first_lowercase; ii < maxChars; ii++) { // start with lower case for other character onwards
+  for (int ii = 1; ii < maxChars; ii++) { // start with lower case for other character onwards
     current_key[ii] = 26;
   }
 
@@ -929,7 +928,6 @@ void removeTextInputCharacter()
 void confirmTextInputCharacter()
 {
   emitTextInputKey(KEY_ENTER,false); //emit ENTER to confirm text input
-  printf("text input interactive mode - ENTER key sent\n");
 }
 
 void nextTextInputKey(bool SingleIncrease) // enable fast skipping if SingleIncrease = false
@@ -1289,7 +1287,11 @@ bool handleEvent(const SDL_Event& event)
           case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: //add one more character
             if (is_pressed) {
               if (character_set[current_key[current_character]] == KEY_SPACE) {
-                current_key[++current_character] = 0; // use capitals after a space
+                if (textinputinteractive_noautocapitals) {
+                  current_key[++current_character] = 0; // override - don't use capitals after a space
+                } else {
+                  current_key[++current_character] = 0; // use capitals after a space
+                }
               } else {
                 current_character++;
               }
