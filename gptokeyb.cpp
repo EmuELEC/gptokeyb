@@ -110,11 +110,16 @@ bool xbox360_mode = false;
 bool textinputpreset_mode = false; 
 bool textinputinteractive_mode = false;
 bool textinputinteractive_mode_active = false;
+bool textinputinteractive_noautocapitals = false;
+bool textinputinteractive_onlyselectexits = false;
+bool textinputinteractive_extrasymbols = false;
 bool app_exult_adjust = false;
-const int maxKeys = 68; //number of keys available for interactive text input
+const int maxKeysNoExtendedSymbols = 69; //number of keys available for interactive text input
+const int maxKeysWithSymbols = 96; //number of keys available for interactive text input with extra symbols
+int maxKeys = maxKeysNoExtendedSymbols;
 const int maxChars = 20; // length of text in characters that can be entered
-int character_set[maxKeys]; // keys that can be selected in text input interactive mode
-bool character_set_shift[maxKeys]; // indicate which keys require shift
+int character_set[maxKeysWithSymbols]; // keys that can be selected in text input interactive mode
+bool character_set_shift[maxKeysWithSymbols]; // indicate which keys require shift
 int current_character = 0; 
 int current_key[maxChars]; // current key selected for each key
 char* AppToKill;
@@ -460,6 +465,20 @@ short char_to_keycode(const char* str)
   return keycode;
 }
 
+void initialiseCharacters()
+{
+  int first_lowercase = 1;
+  if (!(textinputinteractive_noautocapitals)) {
+    current_key[0] = 0; // start with upper case for 1st character
+  } else {
+    first_lowercase = 0; // unless environment variable has been set to disable capitalisation of first characters
+  }
+  for (int ii = first_lowercase; ii < maxChars; ii++) { // start with lower case for other character onwards
+    current_key[ii] = 26;
+  }
+
+}
+
 void initialiseCharacterSet()
 {
   character_set[0]=char_to_keycode("a"); //capital letters
@@ -590,19 +609,75 @@ void initialiseCharacterSet()
   character_set_shift[62]=false;
   character_set[63]=char_to_keycode("."); 
   character_set_shift[63]=false;
-  character_set[64]=char_to_keycode("-"); 
+  character_set[64]=char_to_keycode(","); 
   character_set_shift[64]=false;
-  character_set[65]=char_to_keycode("_"); 
-  character_set_shift[65]=true;
-  character_set[66]=char_to_keycode("("); 
+  character_set[65]=char_to_keycode("-"); 
+  character_set_shift[65]=false;
+  character_set[66]=char_to_keycode("_"); 
   character_set_shift[66]=true;
-  character_set[67]=char_to_keycode(")");  
+  character_set[67]=char_to_keycode("("); 
   character_set_shift[67]=true;
-  
-  current_key[0] = 0; // start with upper case for 1st character
-  for (int ii = 1; ii < maxChars; ii++) { // start with lower case for 2nd character onwards
-    current_key[ii] = 26;
+  character_set[68]=char_to_keycode(")");  
+  character_set_shift[68]=true;
+
+  if (textinputinteractive_extrasymbols) {
+    maxKeys = maxKeysWithSymbols;
+    character_set[69]=char_to_keycode("@");  
+    character_set_shift[69]=true;
+    character_set[70]=char_to_keycode("#");  
+    character_set_shift[70]=true;
+    character_set[71]=char_to_keycode("%");  
+    character_set_shift[71]=true;
+    character_set[72]=char_to_keycode("&");  
+    character_set_shift[72]=true;
+    character_set[73]=char_to_keycode("*");  
+    character_set_shift[73]=true;
+    character_set[74]=char_to_keycode("-");  
+    character_set_shift[74]=false;
+    character_set[75]=char_to_keycode("+");  
+    character_set_shift[75]=true;
+    character_set[76]=char_to_keycode("!");  
+    character_set_shift[76]=true;
+    character_set[77]=char_to_keycode("\"");  
+    character_set_shift[77]=true;
+    character_set[78]=char_to_keycode("\'");  
+    character_set_shift[78]=false;
+    character_set[79]=char_to_keycode(":");  
+    character_set_shift[79]=true;
+    character_set[80]=char_to_keycode(";");  
+    character_set_shift[80]=false;
+    character_set[81]=char_to_keycode("/");  
+    character_set_shift[81]=false;
+    character_set[82]=char_to_keycode("?");  
+    character_set_shift[82]=true;
+    character_set[83]=char_to_keycode("~");  
+    character_set_shift[83]=true;
+    character_set[84]=char_to_keycode("`");  
+    character_set_shift[84]=false;
+    character_set[85]=char_to_keycode("|");  
+    character_set_shift[85]=true;
+    character_set[86]=char_to_keycode("{");  
+    character_set_shift[86]=true;
+    character_set[87]=char_to_keycode("}");  
+    character_set_shift[87]=true;
+    character_set[88]=char_to_keycode("$");  
+    character_set_shift[88]=true;
+    character_set[89]=char_to_keycode("^");  
+    character_set_shift[89]=true;
+    character_set[90]=char_to_keycode("=");  
+    character_set_shift[90]=false;
+    character_set[91]=char_to_keycode("[");  
+    character_set_shift[91]=false;
+    character_set[92]=char_to_keycode("]");  
+    character_set_shift[92]=false;
+    character_set[93]=char_to_keycode("\\");  
+    character_set_shift[93]=false;
+    character_set[94]=char_to_keycode("<");  
+    character_set_shift[94]=true;
+    character_set[95]=char_to_keycode(">");  
+    character_set_shift[95]=true;
   }
+  initialiseCharacters();
 }
 
 void readConfigFile(const char* config_file)
@@ -857,23 +932,31 @@ void confirmTextInputCharacter()
   emitTextInputKey(KEY_ENTER,false); //emit ENTER to confirm text input
 }
 
-void nextTextInputKey()
+void nextTextInputKey(bool SingleIncrease) // enable fast skipping if SingleIncrease = false
 {
-  removeTextInputCharacter(); //delete one character
-  current_key[current_character]++;
+  removeTextInputCharacter(); //delete character(s)
+  if (SingleIncrease) {
+    current_key[current_character]++;
+  } else {
+    current_key[current_character] = current_key[current_character] + 13; // jump forward by half alphabet
+  }
   if (current_key[current_character] >= maxKeys) {
      current_key[current_character] = current_key[current_character] - maxKeys;
   } else if ((current_character == 0) && (character_set[current_key[current_character]] == KEY_SPACE)) {
-      current_key[current_character]++; //skip space as first character due to weird graphical issue with Exult
+      current_key[current_character]++; //skip space as first character 
   }
 
   addTextInputCharacter(); //add new character
 }
 
-void prevTextInputKey()
+void prevTextInputKey(bool SingleDecrease)
 {
-  removeTextInputCharacter(); //delete one character
-  current_key[current_character]--;
+  removeTextInputCharacter(); //delete character(s)
+  if (SingleDecrease) {
+    current_key[current_character]--;
+  } else {
+    current_key[current_character] = current_key[current_character] - 13; // jump back by half alphabet  
+  }
   if (current_key[current_character] < 0) {
      current_key[current_character] = current_key[current_character] + maxKeys;
   } else if ((current_character == 0) && (character_set[current_key[current_character]] == KEY_SPACE)) {
@@ -886,10 +969,10 @@ Uint32 repeatInputCallback(Uint32 interval, void *param)
 {
     int key_code = *reinterpret_cast<int*>(param); 
     if (key_code == KEY_UP) {
-      prevTextInputKey();
+      prevTextInputKey(true);
       interval = config.key_repeat_interval; // key repeats according to repeat interval
     } else if (key_code == KEY_DOWN) {
-      nextTextInputKey();
+      nextTextInputKey(true);
       interval = config.key_repeat_interval; // key repeats according to repeat interval
     } else {
       interval = 0; //turn off timer if invalid keycode
@@ -1196,6 +1279,7 @@ bool handleEvent(const SDL_Event& event)
                 if (app_exult_adjust) {
                   removeTextInputCharacter(); //remove extra spaces            
                 }
+                initialiseCharacters();
                 current_key[current_character] = 0;
                 addTextInputCharacter();
               }
@@ -1225,7 +1309,7 @@ bool handleEvent(const SDL_Event& event)
             
           case SDL_CONTROLLER_BUTTON_DPAD_UP: //select previous key
             if (is_pressed) {
-                prevTextInputKey();  
+                prevTextInputKey(true);  
                 setInputRepeat(KEY_UP, true);        
             } else {
                 setInputRepeat(KEY_UP, false);
@@ -1234,13 +1318,31 @@ bool handleEvent(const SDL_Event& event)
             
           case SDL_CONTROLLER_BUTTON_DPAD_DOWN:  //select next key
             if (is_pressed) {
-                nextTextInputKey();
+                nextTextInputKey(true);
                 setInputRepeat(KEY_DOWN, true);        
             } else {
                 setInputRepeat(KEY_DOWN, false);
             }
             break; //SDL_CONTROLLER_BUTTON_DPAD_DOWN
             
+          case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: //jump back by 13 letters
+            if (is_pressed) {
+                prevTextInputKey(false); //jump back by 13 letters
+                setInputRepeat(KEY_UP, false); //disable key repeat  
+            } else {
+                setInputRepeat(KEY_UP, false);
+            }
+            break; //SDL_CONTROLLER_BUTTON_LEFTSHOULDER
+            
+          case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:  //jump forward by 13 letters
+            if (is_pressed) {
+                nextTextInputKey(false); //jump forward by 13 letters
+                setInputRepeat(KEY_DOWN, false); //disable key repeat        
+            } else {
+                setInputRepeat(KEY_DOWN, false);
+            }
+            break; //SDL_CONTROLLER_BUTTON_RIGHTSHOULDER
+
           case SDL_CONTROLLER_BUTTON_LEFTSTICK: // hotkey override
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
             if (is_pressed) { // cancel key input and disable interactive input mode
@@ -1260,8 +1362,10 @@ bool handleEvent(const SDL_Event& event)
             break; //SDL_CONTROLLER_BUTTON_BACK
             
           case SDL_CONTROLLER_BUTTON_START:
-            if (is_pressed) { //disable interactive mode
+            if (is_pressed) { 
+              confirmTextInputCharacter();
               
+              //disable interactive mode
               textinputinteractive_mode_active = false;
               state.textinputinteractivetrigger_jsdevice = 0;
               state.textinputinteractivetrigger_pressed = false;
@@ -1687,6 +1791,14 @@ int main(int argc, char* argv[])
     config.text_input_preset = env_textinput;
   }
 
+  // Add textinput_interactive environment variable if available
+  if (char* env_textinput_interactive = SDL_getenv("TEXTINPUTINTERACTIVE")) {
+    if (strcmp(env_textinput_interactive,"Y") == 0) {
+      textinputinteractive_mode = true;
+      textinputinteractive_mode_active = false;
+    }
+  }
+
   if (argc > 1) {
     config_mode = false;
     config_file = "";
@@ -1729,6 +1841,26 @@ int main(int argc, char* argv[])
       
     } 
   }
+
+  // Add textinput_interactive mode, check for extra options via environment variable if available
+  if (textinputinteractive_mode) {
+    if (char* env_textinput_nocaps = SDL_getenv("TEXTINPUTNOAUTOCAPITALS")) { // don't automatically use capitals for first letter or after space
+      if (strcmp(env_textinput_nocaps,"Y") == 0) {
+        textinputinteractive_noautocapitals = true;
+      }
+    }
+    if (char* env_textinput_selectonly = SDL_getenv("TEXTINPUTONLYSELECTEXITS")) { // don't exit interactive text input mode if START is pressed
+      if (strcmp(env_textinput_selectonly,"Y") == 0) {
+        textinputinteractive_onlyselectexits = true;
+      }
+    }
+    if (char* env_textinput_extrasymbols = SDL_getenv("TEXTINPUTADDEXTRASYMBOLS")) { // extended characters set for interactive text input mode
+      if (strcmp(env_textinput_extrasymbols,"Y") == 0) {
+        textinputinteractive_extrasymbols = true;
+      }
+    }    
+  }
+
 
   // Create fake input device (not needed in kill mode)
   //if (!kill_mode) {  
