@@ -1371,6 +1371,7 @@ bool handleEvent(const SDL_Event& event)
             
           case SDL_CONTROLLER_BUTTON_START:
             if (is_pressed) { 
+              confirmTextInputCharacter(); // send ENTER key to confirm text entry
               //disable interactive mode
               textinputinteractive_mode_active = false;
               state.textinputinteractivetrigger_jsdevice = 0;
