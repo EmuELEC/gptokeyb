@@ -1547,6 +1547,14 @@ bool handleEvent(const SDL_Event& event)
                     printf("text input processing %s\n", config.text_input_preset);
                     processKeys();
                 }
+            } 
+         }
+         else if (textinputpreset_mode && state.textinputconfirmtrigger_pressed && state.hotkey_pressed) {     
+            if (state.hotkey_jsdevice == state.textinputconfirmtrigger_jsdevice) {
+                printf("text input enter key\n");
+                emitKey(char_to_keycode("enter"), true);
+                SDL_Delay(15);
+                emitKey(char_to_keycode("enter"), false);
             }         
           } //input preset trigger mode (i.e. not kill mode)
         else if ((textinputpreset_mode) && (state.textinputconfirmtrigger_pressed && state.hotkey_pressed)) { //activate input preset confirm mode - send ENTER key
@@ -1887,7 +1895,7 @@ int main(int argc, char* argv[])
         printf("Using ConfigFile %s\n", config_file);
         readConfigFile(config_file);
       }
-     // if we are in textinput mode, note the text preset
+      // if we are in textinput mode, note the text preset
       if (textinputpreset_mode) {
         if (config.text_input_preset != NULL) {
             printf("text input preset is %s\n", config.text_input_preset);
