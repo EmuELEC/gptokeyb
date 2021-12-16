@@ -108,7 +108,19 @@ bool sudo_kill = false; //allow sudo kill instead of killall for non-emuelec sys
 bool openbor_mode = false;
 bool xbox360_mode = false;
 bool textinputpreset_mode = false; 
-bool textinputconfirm_mode = false;   
+bool textinputinteractive_mode = false;
+bool textinputinteractive_mode_active = false;
+bool textinputinteractive_noautocapitals = false;
+bool textinputinteractive_extrasymbols = false;
+bool app_exult_adjust = false;
+const int maxKeysNoExtendedSymbols = 69; //number of keys available for interactive text input
+const int maxKeysWithSymbols = 96; //number of keys available for interactive text input with extra symbols
+int maxKeys = maxKeysNoExtendedSymbols;
+const int maxChars = 20; // length of text in characters that can be entered
+int character_set[maxKeysWithSymbols]; // keys that can be selected in text input interactive mode
+bool character_set_shift[maxKeysWithSymbols]; // indicate which keys require shift
+int current_character = 0; 
+int current_key[maxChars]; // current key selected for each key
 char* AppToKill;
 bool config_mode = false;
 bool hotkey_override = false;
@@ -118,6 +130,7 @@ struct
 {
   int hotkey_jsdevice;
   int start_jsdevice;
+  int textinputinteractivetrigger_jsdevice; // to trigger text input interactive
   int textinputpresettrigger_jsdevice; // to trigger text input preset
   int textinputconfirmtrigger_jsdevice; // to trigger text input confirm via Enter key
   int mouseX = 0;
@@ -130,6 +143,7 @@ struct
   int current_r2 = 0;
   bool hotkey_pressed = false;
   bool start_pressed = false;
+  bool textinputinteractivetrigger_pressed = false;
   bool textinputpresettrigger_pressed = false;
   bool textinputconfirmtrigger_pressed = false;
   bool left_analog_was_up = false;
@@ -209,7 +223,7 @@ struct
   int fake_mouse_scale = 512;
   int fake_mouse_delay = 16;
 
-  Uint32 key_repeat_interval = SDL_DEFAULT_REPEAT_INTERVAL; // (33 / 10) * 10;  /* To round it down to the nearest 10 ms */
+  Uint32 key_repeat_interval = SDL_DEFAULT_REPEAT_INTERVAL * 2; 
   Uint32 key_repeat_delay = SDL_DEFAULT_REPEAT_DELAY; 
   
   char* text_input_preset;
@@ -450,6 +464,220 @@ short char_to_keycode(const char* str)
   return keycode;
 }
 
+void initialiseCharacters()
+{
+  if (textinputinteractive_noautocapitals) {
+    current_key[0] = 26; // if environment variable has been set to disable capitalisation of first characters start with all lower case  
+  } else {
+    current_key[0] = 0; // otherwise start with upper case for 1st character
+  }
+  for (int ii = 1; ii < maxChars; ii++) { // start with lower case for other character onwards
+    current_key[ii] = 26;
+  }
+
+}
+
+void initialiseCharacterSet()
+{
+  character_set[0]=char_to_keycode("a"); //capital letters
+  character_set_shift[0]=true;
+  character_set[1]=char_to_keycode("b");
+  character_set_shift[1]=true;
+  character_set[2]=char_to_keycode("c");
+  character_set_shift[2]=true;
+  character_set[3]=char_to_keycode("d");
+  character_set_shift[3]=true;
+  character_set[4]=char_to_keycode("e");
+  character_set_shift[4]=true;
+  character_set[5]=char_to_keycode("f");
+  character_set_shift[5]=true;
+  character_set[6]=char_to_keycode("g");
+  character_set_shift[6]=true;
+  character_set[7]=char_to_keycode("h");
+  character_set_shift[7]=true;
+  character_set[8]=char_to_keycode("i");
+  character_set_shift[8]=true;
+  character_set[9]=char_to_keycode("j");
+  character_set_shift[9]=true;
+  character_set[10]=char_to_keycode("k");
+  character_set_shift[10]=true;
+  character_set[11]=char_to_keycode("l");
+  character_set_shift[11]=true;
+  character_set[12]=char_to_keycode("m");
+  character_set_shift[12]=true;
+  character_set[13]=char_to_keycode("n");
+  character_set_shift[13]=true;
+  character_set[14]=char_to_keycode("o");
+  character_set_shift[14]=true;
+  character_set[15]=char_to_keycode("p");
+  character_set_shift[15]=true;
+  character_set[16]=char_to_keycode("q");
+  character_set_shift[16]=true;
+  character_set[17]=char_to_keycode("r");
+  character_set_shift[17]=true;
+  character_set[18]=char_to_keycode("s");
+  character_set_shift[18]=true;
+  character_set[19]=char_to_keycode("t");
+  character_set_shift[19]=true;
+  character_set[20]=char_to_keycode("u");
+  character_set_shift[20]=true;
+  character_set[21]=char_to_keycode("v");
+  character_set_shift[21]=true;
+  character_set[22]=char_to_keycode("w");
+  character_set_shift[22]=true;
+  character_set[23]=char_to_keycode("x");
+  character_set_shift[23]=true;
+  character_set[24]=char_to_keycode("y");
+  character_set_shift[24]=true;
+  character_set[25]=char_to_keycode("z");
+  character_set_shift[25]=true;
+  character_set[26]=char_to_keycode("a"); //lower case
+  character_set_shift[26]=false;
+  character_set[27]=char_to_keycode("b");
+  character_set_shift[27]=false;
+  character_set[28]=char_to_keycode("c");
+  character_set_shift[28]=false;
+  character_set[29]=char_to_keycode("d");
+  character_set_shift[29]=false;
+  character_set[30]=char_to_keycode("e");
+  character_set_shift[30]=false;  
+  character_set[31]=char_to_keycode("f");
+  character_set_shift[31]=false;
+  character_set[32]=char_to_keycode("g");
+  character_set_shift[32]=false;
+  character_set[33]=char_to_keycode("h");
+  character_set_shift[33]=false;
+  character_set[34]=char_to_keycode("i");
+  character_set_shift[34]=false;
+  character_set[35]=char_to_keycode("j");
+  character_set_shift[35]=false;
+  character_set[36]=char_to_keycode("k");
+  character_set_shift[36]=false;
+  character_set[37]=char_to_keycode("l");
+  character_set_shift[37]=false;
+  character_set[38]=char_to_keycode("m");
+  character_set_shift[38]=false;
+  character_set[39]=char_to_keycode("n");
+  character_set_shift[39]=false;
+  character_set[40]=char_to_keycode("o");
+  character_set_shift[40]=false;
+  character_set[41]=char_to_keycode("p");
+  character_set_shift[41]=false;
+  character_set[42]=char_to_keycode("q");
+  character_set_shift[42]=false;
+  character_set[43]=char_to_keycode("r");
+  character_set_shift[43]=false;
+  character_set[44]=char_to_keycode("s");
+  character_set_shift[44]=false;
+  character_set[45]=char_to_keycode("t");
+  character_set_shift[45]=false;
+  character_set[46]=char_to_keycode("u");
+  character_set_shift[46]=false;
+  character_set[47]=char_to_keycode("v");
+  character_set_shift[47]=false;
+  character_set[48]=char_to_keycode("w");
+  character_set_shift[48]=false;
+  character_set[49]=char_to_keycode("x");
+  character_set_shift[49]=false;
+  character_set[50]=char_to_keycode("y");
+  character_set_shift[50]=false;
+  character_set[51]=char_to_keycode("z");
+  character_set_shift[51]=false;
+  character_set[52]=char_to_keycode("0");
+  character_set_shift[52]=false;
+  character_set[53]=char_to_keycode("1");
+  character_set_shift[53]=false;
+  character_set[54]=char_to_keycode("2");
+  character_set_shift[54]=false;
+  character_set[55]=char_to_keycode("3");
+  character_set_shift[55]=false;
+  character_set[56]=char_to_keycode("4");
+  character_set_shift[56]=false;
+  character_set[57]=char_to_keycode("5");
+  character_set_shift[57]=false;
+  character_set[58]=char_to_keycode("6");
+  character_set_shift[58]=false;
+  character_set[59]=char_to_keycode("7"); 
+  character_set_shift[59]=false;
+  character_set[60]=char_to_keycode("8"); 
+  character_set_shift[60]=false;
+  character_set[61]=char_to_keycode("9"); 
+  character_set_shift[61]=false;
+  character_set[62]=char_to_keycode("space"); 
+  character_set_shift[62]=false;
+  character_set[63]=char_to_keycode("."); 
+  character_set_shift[63]=false;
+  character_set[64]=char_to_keycode(","); 
+  character_set_shift[64]=false;
+  character_set[65]=char_to_keycode("-"); 
+  character_set_shift[65]=false;
+  character_set[66]=char_to_keycode("_"); 
+  character_set_shift[66]=true;
+  character_set[67]=char_to_keycode("("); 
+  character_set_shift[67]=true;
+  character_set[68]=char_to_keycode(")");  
+  character_set_shift[68]=true;
+
+  if (textinputinteractive_extrasymbols) {
+    maxKeys = maxKeysWithSymbols;
+    character_set[69]=char_to_keycode("@");  
+    character_set_shift[69]=true;
+    character_set[70]=char_to_keycode("#");  
+    character_set_shift[70]=true;
+    character_set[71]=char_to_keycode("%");  
+    character_set_shift[71]=true;
+    character_set[72]=char_to_keycode("&");  
+    character_set_shift[72]=true;
+    character_set[73]=char_to_keycode("*");  
+    character_set_shift[73]=true;
+    character_set[74]=char_to_keycode("-");  
+    character_set_shift[74]=false;
+    character_set[75]=char_to_keycode("+");  
+    character_set_shift[75]=true;
+    character_set[76]=char_to_keycode("!");  
+    character_set_shift[76]=true;
+    character_set[77]=char_to_keycode("\"");  
+    character_set_shift[77]=true;
+    character_set[78]=char_to_keycode("\'");  
+    character_set_shift[78]=false;
+    character_set[79]=char_to_keycode(":");  
+    character_set_shift[79]=true;
+    character_set[80]=char_to_keycode(";");  
+    character_set_shift[80]=false;
+    character_set[81]=char_to_keycode("/");  
+    character_set_shift[81]=false;
+    character_set[82]=char_to_keycode("?");  
+    character_set_shift[82]=true;
+    character_set[83]=char_to_keycode("~");  
+    character_set_shift[83]=true;
+    character_set[84]=char_to_keycode("`");  
+    character_set_shift[84]=false;
+    character_set[85]=char_to_keycode("|");  
+    character_set_shift[85]=true;
+    character_set[86]=char_to_keycode("{");  
+    character_set_shift[86]=true;
+    character_set[87]=char_to_keycode("}");  
+    character_set_shift[87]=true;
+    character_set[88]=char_to_keycode("$");  
+    character_set_shift[88]=true;
+    character_set[89]=char_to_keycode("^");  
+    character_set_shift[89]=true;
+    character_set[90]=char_to_keycode("=");  
+    character_set_shift[90]=false;
+    character_set[91]=char_to_keycode("[");  
+    character_set_shift[91]=false;
+    character_set[92]=char_to_keycode("]");  
+    character_set_shift[92]=false;
+    character_set[93]=char_to_keycode("\\");  
+    character_set_shift[93]=false;
+    character_set[94]=char_to_keycode("<");  
+    character_set_shift[94]=true;
+    character_set[95]=char_to_keycode(">");  
+    character_set_shift[95]=true;
+  }
+  initialiseCharacters();
+}
+
 void readConfigFile(const char* config_file)
 {
   const auto parsedConfig = parseConfigFile(config_file);
@@ -673,6 +901,95 @@ void emitKey(int code, bool is_pressed)
   emit(EV_SYN, SYN_REPORT, 0);
 }
 
+void emitTextInputKey(int code, bool uppercase)
+{
+  if (uppercase) { //capitalise capital letters by holding shift
+    emitKey(KEY_LEFTSHIFT, true);
+  }
+  emitKey(code, true);
+  SDL_Delay(16);
+  emitKey(code, false);
+  SDL_Delay(16);
+  if (uppercase) { //release shift if held
+    emitKey(KEY_LEFTSHIFT, false);
+  }
+}
+
+void addTextInputCharacter()
+{
+  emitTextInputKey(character_set[current_key[current_character]],character_set_shift[current_key[current_character]]);
+}
+
+void removeTextInputCharacter()
+{
+  emitTextInputKey(KEY_BACKSPACE,false); //delete one character
+}
+
+void confirmTextInputCharacter()
+{
+  emitTextInputKey(KEY_ENTER,false); //emit ENTER to confirm text input
+}
+
+void nextTextInputKey(bool SingleIncrease) // enable fast skipping if SingleIncrease = false
+{
+  removeTextInputCharacter(); //delete character(s)
+  if (SingleIncrease) {
+    current_key[current_character]++;
+  } else {
+    current_key[current_character] = current_key[current_character] + 13; // jump forward by half alphabet
+  }
+  if (current_key[current_character] >= maxKeys) {
+     current_key[current_character] = current_key[current_character] - maxKeys;
+  } else if ((current_character == 0) && (character_set[current_key[current_character]] == KEY_SPACE)) {
+      current_key[current_character]++; //skip space as first character 
+  }
+
+  addTextInputCharacter(); //add new character
+}
+
+void prevTextInputKey(bool SingleDecrease)
+{
+  removeTextInputCharacter(); //delete character(s)
+  if (SingleDecrease) {
+    current_key[current_character]--;
+  } else {
+    current_key[current_character] = current_key[current_character] - 13; // jump back by half alphabet  
+  }
+  if (current_key[current_character] < 0) {
+     current_key[current_character] = current_key[current_character] + maxKeys;
+  } else if ((current_character == 0) && (character_set[current_key[current_character]] == KEY_SPACE)) {
+      current_key[current_character]--; //skip space as first character due to weird graphical issue with Exult
+  }
+  addTextInputCharacter(); //add new character
+}
+
+Uint32 repeatInputCallback(Uint32 interval, void *param)
+{
+    int key_code = *reinterpret_cast<int*>(param); 
+    if (key_code == KEY_UP) {
+      prevTextInputKey(true);
+      interval = config.key_repeat_interval; // key repeats according to repeat interval
+    } else if (key_code == KEY_DOWN) {
+      nextTextInputKey(true);
+      interval = config.key_repeat_interval; // key repeats according to repeat interval
+    } else {
+      interval = 0; //turn off timer if invalid keycode
+    }
+    return(interval);
+}
+void setInputRepeat(int code, bool is_pressed)
+{
+  if (is_pressed) {
+    state.key_to_repeat = code;
+    state.key_repeat_timer_id=SDL_AddTimer(config.key_repeat_interval, repeatInputCallback, &state.key_to_repeat); // for a new repeat, use repeat delay for first time, then switch to repeat interval
+  } else {
+    SDL_RemoveTimer( state.key_repeat_timer_id );
+    state.key_repeat_timer_id=0;
+    state.key_to_repeat=0;
+  }
+}
+
+
 void processKeys()
 {
   int lenText = strlen(config.text_input_preset);
@@ -715,16 +1032,7 @@ void processKeys()
             uppercase = false;
         }
         
-        if (uppercase) { //capitalise capital letters by holding shift
-            emitKey(KEY_LEFTSHIFT, true);
-        }
-        emitKey(code, true);
-        SDL_Delay(config.fake_mouse_delay);
-        emitKey(code, false);
-        SDL_Delay(config.fake_mouse_delay);
-        if (strcmp(upperstr,str) == 0) { //release shift if held
-            emitKey(KEY_LEFTSHIFT, false);
-        }
+        emitTextInputKey(code, uppercase);
     } // if valid character
   } //for
 }
@@ -734,7 +1042,7 @@ Uint32 repeatKeyCallback(Uint32 interval, void *param)
     //timerCallback requires pointer parameter, but passing pointer to key_code for analog sticks doesn't work
     int key_code = *reinterpret_cast<int*>(param); 
     emitKey(key_code, false);
-    emitKey(key_code, true);
+    emitKey(key_code, true); 
     interval = config.key_repeat_interval; // key repeats according to repeat interval; initial interval is set to delay
     return(interval);
 }
@@ -955,14 +1263,123 @@ bool handleEvent(const SDL_Event& event)
        
       } else {
         // Config / default mode
-/*        if (textinput_mode) {
-//        switch (event.cbutton.button) {
-//          case SDL_CONTROLLER_BUTTON_A:
-//            processKeys();
-//            break;
-//          }
-//        textinput_mode = false;        
-        } else  { */
+        if (textinputinteractive_mode_active) {
+        switch (event.cbutton.button) {
+          case SDL_CONTROLLER_BUTTON_DPAD_LEFT: //move back one character
+            if (is_pressed) {
+              removeTextInputCharacter();
+              if ((character_set[current_key[current_character]] == KEY_SPACE) && app_exult_adjust) {
+                removeTextInputCharacter(); //remove extra spaces            
+              }
+              if (current_character > 0) {
+                current_character--;
+              } else if (current_character == 0) {
+                if (app_exult_adjust) {
+                  removeTextInputCharacter(); //remove extra spaces            
+                }
+                initialiseCharacters();
+                addTextInputCharacter();
+              }
+            }
+            break; // SDL_CONTROLLER_BUTTON_DPAD_LEFT
+            
+          case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: //add one more character
+            if (is_pressed) {
+              if ((character_set[current_key[current_character]] == KEY_SPACE) && (!(textinputinteractive_noautocapitals))) {
+                current_key[++current_character] = 0; // use capitals after a space
+              } else {
+                current_character++;
+              }
+              if (current_character < maxChars) {
+                addTextInputCharacter();
+              } else { // reached limit of characters
+                confirmTextInputCharacter();
+                textinputinteractive_mode_active = false;
+                state.textinputinteractivetrigger_jsdevice = 0;
+                state.textinputinteractivetrigger_pressed = false;
+                state.hotkey_jsdevice = 0;
+                state.hotkey_pressed = false;
+                printf("text input interactive mode no longer active\n");
+              }
+            }
+            break; //SDL_CONTROLLER_BUTTON_DPAD_RIGHT
+            
+          case SDL_CONTROLLER_BUTTON_DPAD_UP: //select previous key
+            if (is_pressed) {
+                prevTextInputKey(true);  
+                setInputRepeat(KEY_UP, true);        
+            } else {
+                setInputRepeat(KEY_UP, false);
+            }
+            break; //SDL_CONTROLLER_BUTTON_DPAD_UP
+            
+          case SDL_CONTROLLER_BUTTON_DPAD_DOWN:  //select next key
+            if (is_pressed) {
+                nextTextInputKey(true);
+                setInputRepeat(KEY_DOWN, true);        
+            } else {
+                setInputRepeat(KEY_DOWN, false);
+            }
+            break; //SDL_CONTROLLER_BUTTON_DPAD_DOWN
+            
+          case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: //jump back by 13 letters
+            if (is_pressed) {
+                prevTextInputKey(false); //jump back by 13 letters
+                setInputRepeat(KEY_UP, false); //disable key repeat  
+            } else {
+                setInputRepeat(KEY_UP, false);
+            }
+            break; //SDL_CONTROLLER_BUTTON_LEFTSHOULDER
+            
+          case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:  //jump forward by 13 letters
+            if (is_pressed) {
+                nextTextInputKey(false); //jump forward by 13 letters
+                setInputRepeat(KEY_DOWN, false); //disable key repeat        
+            } else {
+                setInputRepeat(KEY_DOWN, false);
+            }
+            break; //SDL_CONTROLLER_BUTTON_RIGHTSHOULDER
+
+          case SDL_CONTROLLER_BUTTON_A: //A buttons sends ENTER KEY
+            if (is_pressed) {
+              confirmTextInputCharacter();
+            }
+            break; //SDL_CONTROLLER_BUTTON_A
+
+          case SDL_CONTROLLER_BUTTON_LEFTSTICK: // hotkey override
+          case SDL_CONTROLLER_BUTTON_BACK: // aka select
+            if (is_pressed) { // cancel key input and disable interactive input mode
+              for( int ii = 0; ii <= current_character; ii++ ) {
+                removeTextInputCharacter(); // delete all characters
+                if ((character_set[current_key[current_character]] == KEY_SPACE) && app_exult_adjust) {
+                  removeTextInputCharacter(); //remove extra spaces            
+                }
+              }
+              initialiseCharacters(); //reset the character selections ready for new text to be added later
+              textinputinteractive_mode_active = false;
+              state.textinputinteractivetrigger_jsdevice = 0;
+              state.textinputinteractivetrigger_pressed = false;
+              state.hotkey_jsdevice = 0;
+              state.hotkey_pressed = false;
+              printf("text input interactive mode no longer active\n");
+            }
+            break; //SDL_CONTROLLER_BUTTON_BACK
+            
+          case SDL_CONTROLLER_BUTTON_START:
+            if (is_pressed) { 
+              confirmTextInputCharacter(); // send ENTER key to confirm text entry
+              //disable interactive mode
+              textinputinteractive_mode_active = false;
+              state.textinputinteractivetrigger_jsdevice = 0;
+              state.textinputinteractivetrigger_pressed = false;
+              state.hotkey_jsdevice = 0;
+              state.hotkey_pressed = false;
+              printf("text input interactive mode no longer active\n");
+            }
+            break; //SDL_CONTROLLER_BUTTON_START
+            
+          }   //switch (event.cbutton.button) for textinputinteractive_mode_active     
+        } else { //config mode (i.e. not textinputinteractive_mode_active)
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
             emitKey(config.left, is_pressed);
@@ -994,6 +1411,11 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+            if (textinputinteractive_mode) {
+                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
+                state.textinputinteractivetrigger_pressed = is_pressed;
+                if (state.hotkey_pressed) break;
+            }
             emitKey(config.down, is_pressed);
             if ((config.down_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.down))){
                 setKeyRepeat(config.down, is_pressed);
@@ -1047,7 +1469,7 @@ bool handleEvent(const SDL_Event& event)
             if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
                 setKeyRepeat(config.l3, is_pressed);
             }
-            if ((kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) || (textinputpreset_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0))) {
+            if ((kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) || (textinputpreset_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) || (textinputinteractive_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0))) {
                 state.hotkey_jsdevice = event.cdevice.which;
                 state.hotkey_pressed = is_pressed;
             }
@@ -1065,7 +1487,7 @@ bool handleEvent(const SDL_Event& event)
             if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
                 setKeyRepeat(config.guide, is_pressed);
             }
-            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "guide") == 0))) {
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "guide") == 0)) || (textinputinteractive_mode && !(hotkey_override)) || (textinputinteractive_mode && (strcmp(hotkey_code, "guide") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
             }
@@ -1076,7 +1498,7 @@ bool handleEvent(const SDL_Event& event)
             if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
                 setKeyRepeat(config.back, is_pressed);
             }
-            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "back") == 0))) {
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "back") == 0)) || (textinputinteractive_mode && !(hotkey_override)) || (textinputinteractive_mode && (strcmp(hotkey_code, "back") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
             }
@@ -1092,7 +1514,7 @@ bool handleEvent(const SDL_Event& event)
                 state.start_pressed = is_pressed;
             };
             break;
-        }
+        } //switch
         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {
           SDL_RemoveTimer( state.key_repeat_timer_id );
           if (! sudo_kill) {
@@ -1118,14 +1540,12 @@ bool handleEvent(const SDL_Event& event)
              }
            } // sudo kill
         } //kill mode 
-        else if (textinputpreset_mode && state.textinputpresettrigger_pressed && state.hotkey_pressed) {
+        else if ((textinputpreset_mode) && (state.textinputpresettrigger_pressed && state.hotkey_pressed)) { //activate input preset mode - send predefined text as a series of keystrokes
             printf("text input preset pressed\n");
             if (state.hotkey_jsdevice == state.textinputpresettrigger_jsdevice) {
                 if (config.text_input_preset != NULL) {
-                    printf("text input preset processing %s\n", config.text_input_preset);
+                    printf("text input processing %s\n", config.text_input_preset);
                     processKeys();
-                    //emitKey(char_to_keycode("r"), true);
-                    //emitKey(char_to_keycode("r"), false);
                 }
             } 
          }
@@ -1136,16 +1556,39 @@ bool handleEvent(const SDL_Event& event)
                 SDL_Delay(15);
                 emitKey(char_to_keycode("enter"), false);
             }         
-          } 
-      } //xbox or config/default
-    } break;
+          } //input preset trigger mode (i.e. not kill mode)
+        else if ((textinputpreset_mode) && (state.textinputconfirmtrigger_pressed && state.hotkey_pressed)) { //activate input preset confirm mode - send ENTER key
+            printf("text input confirm pressed\n");
+            if (state.hotkey_jsdevice == state.textinputconfirmtrigger_jsdevice) {
+                printf("text input Enter key\n");
+                emitKey(char_to_keycode("enter"), true);
+                SDL_Delay(15);
+                emitKey(char_to_keycode("enter"), false);
+            }
+          } //input confirm trigger mode (i.e. not kill mode)         
+        else if ((textinputinteractive_mode) && (state.textinputinteractivetrigger_pressed && state.hotkey_pressed)) { //activate interactive text input mode
+            printf("text input interactive pressed\n");
+            if (state.hotkey_jsdevice == state.textinputinteractivetrigger_jsdevice) {
+                printf("text input interactive mode active\n");
+                textinputinteractive_mode_active = true;
+                SDL_RemoveTimer( state.key_repeat_timer_id ); // disable any active key repeat timer
+                emitKey(config.back, false); // release select key_press
+                if (hotkey_override && (strcmp(hotkey_code, "l3") == 0)) emitKey(config.l3, false); // release l3 hotkey key_press
+                current_character = 0;
+
+                addTextInputCharacter();
+            }
+          } //input interactive trigger mode (i.e. not kill mode)
+        } //textinput interactive mode         
+      }  //xbox or config/default
+    } break; // case SDL_CONTROLLERBUTTONUP: SDL_CONTROLLERBUTTONDOWN:
 
     case SDL_CONTROLLERAXISMOTION:
       if (xbox360_mode) {
         switch (event.caxis.axis) {
           case SDL_CONTROLLER_AXIS_LEFTX:
             emitAxisMotion(ABS_X, event.caxis.value);
-            break;
+            break; 
 
           case SDL_CONTROLLER_AXIS_LEFTY:
             emitAxisMotion(ABS_Y, event.caxis.value);
@@ -1207,7 +1650,7 @@ bool handleEvent(const SDL_Event& event)
           case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
             state.current_r2 = event.caxis.value;
             break;
-        }
+        } // switch (event.caxis.axis)
 
         // fake mouse
         if (config.left_analog_as_mouse && left_axis_movement) {
@@ -1218,87 +1661,88 @@ bool handleEvent(const SDL_Event& event)
           state.mouseY = state.current_right_analog_y / config.fake_mouse_scale;
         } else {
           // Analogs trigger keys
-          
-          handleAnalogTrigger(
-            state.current_left_analog_y < 0,
-            state.left_analog_was_up,
-            config.left_analog_up);
-          if ((state.current_left_analog_y < 0 ) && config.left_analog_up_repeat && (state.key_to_repeat == 0)) {
+          if (!(textinputinteractive_mode_active)) {
+            handleAnalogTrigger(
+              state.current_left_analog_y < 0,
+              state.left_analog_was_up,
+              config.left_analog_up);
+            if ((state.current_left_analog_y < 0 ) && config.left_analog_up_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.left_analog_up, true);
             } else if ((state.current_left_analog_y == 0 ) && config.left_analog_up_repeat && (state.key_to_repeat == config.left_analog_up)) {
                 setKeyRepeat(config.left_analog_up, false);
             }
 
-          handleAnalogTrigger(
-            state.current_left_analog_y > 0,
-            state.left_analog_was_down,
-            config.left_analog_down);
-          if ((state.current_left_analog_y > 0 ) && config.left_analog_down_repeat && (state.key_to_repeat == 0)) {
+            handleAnalogTrigger(
+              state.current_left_analog_y > 0,
+              state.left_analog_was_down,
+              config.left_analog_down);
+            if ((state.current_left_analog_y > 0 ) && config.left_analog_down_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.left_analog_down, true);
             } else if ((state.current_left_analog_y == 0 ) && config.left_analog_down_repeat && (state.key_to_repeat == config.left_analog_down)) {
                 setKeyRepeat(config.left_analog_down, false);
             }
 
-          handleAnalogTrigger(
-            state.current_left_analog_x < 0,
-            state.left_analog_was_left,
-            config.left_analog_left);
-          if ((state.current_left_analog_x < 0 ) && config.left_analog_left_repeat && (state.key_to_repeat == 0)) {
+            handleAnalogTrigger(
+              state.current_left_analog_x < 0,
+              state.left_analog_was_left,
+              config.left_analog_left);
+            if ((state.current_left_analog_x < 0 ) && config.left_analog_left_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.left_analog_left, true);
             } else if ((state.current_left_analog_x == 0 ) && config.left_analog_left_repeat && (state.key_to_repeat == config.left_analog_left)) {
                 setKeyRepeat(config.left_analog_left, false);
             }
 
-          handleAnalogTrigger(
-            state.current_left_analog_x > 0,
-            state.left_analog_was_right,
-            config.left_analog_right);
-          if ((state.current_left_analog_x > 0 ) && config.left_analog_right_repeat && (state.key_to_repeat == 0)) {
+            handleAnalogTrigger(
+              state.current_left_analog_x > 0,
+              state.left_analog_was_right,
+              config.left_analog_right);
+            if ((state.current_left_analog_x > 0 ) && config.left_analog_right_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.left_analog_right, true);
             } else if ((state.current_left_analog_x == 0 ) && config.left_analog_right_repeat && (state.key_to_repeat == config.left_analog_right)) {
                 setKeyRepeat(config.left_analog_right, false);
             }
 
-          handleAnalogTrigger(
-            state.current_right_analog_y < 0,
-            state.right_analog_was_up,
-            config.right_analog_up);
-          if ((state.current_right_analog_y < 0 ) && config.right_analog_up_repeat && (state.key_to_repeat == 0)) {
+            handleAnalogTrigger(
+              state.current_right_analog_y < 0,
+              state.right_analog_was_up,
+              config.right_analog_up);
+            if ((state.current_right_analog_y < 0 ) && config.right_analog_up_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.right_analog_up, true);
             } else if ((state.current_right_analog_y == 0 ) && config.right_analog_up_repeat && (state.key_to_repeat == config.right_analog_up)) {
                 setKeyRepeat(config.right_analog_up, false);
             }
 
-          handleAnalogTrigger(
-            state.current_right_analog_y > 0,
-            state.right_analog_was_down,
-            config.right_analog_down);
-          if ((state.current_right_analog_y > 0 ) && config.right_analog_down_repeat && (state.key_to_repeat == 0)) {
+            handleAnalogTrigger(
+              state.current_right_analog_y > 0,
+              state.right_analog_was_down,
+              config.right_analog_down);
+            if ((state.current_right_analog_y > 0 ) && config.right_analog_down_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.right_analog_down, true);
             } else if ((state.current_right_analog_y == 0 ) && config.right_analog_down_repeat && (state.key_to_repeat == config.right_analog_down)) {
                 setKeyRepeat(config.right_analog_down, false);
             }
 
-          handleAnalogTrigger(
-            state.current_right_analog_x < 0,
-            state.right_analog_was_left,
-            config.right_analog_left);
-          if ((state.current_right_analog_x < 0 ) && config.right_analog_left_repeat && (state.key_to_repeat == 0)) {
+            handleAnalogTrigger(
+              state.current_right_analog_x < 0,
+              state.right_analog_was_left,
+              config.right_analog_left);
+            if ((state.current_right_analog_x < 0 ) && config.right_analog_left_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.right_analog_left, true);
             } else if ((state.current_right_analog_x == 0 ) && config.right_analog_left_repeat && (state.key_to_repeat == config.right_analog_left)) {
                 setKeyRepeat(config.right_analog_left, false);
             }
 
-          handleAnalogTrigger(
-            state.current_right_analog_x > 0,
-            state.right_analog_was_right,
-            config.right_analog_right);
-          if ((state.current_right_analog_x > 0 ) && config.right_analog_right_repeat && (state.key_to_repeat == 0)) {
+            handleAnalogTrigger(
+              state.current_right_analog_x > 0,
+              state.right_analog_was_right,
+              config.right_analog_right);
+            if ((state.current_right_analog_x > 0 ) && config.right_analog_right_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.right_analog_right, true);
             } else if ((state.current_right_analog_x == 0 ) && config.right_analog_right_repeat && (state.key_to_repeat == config.right_analog_right)) {
                 setKeyRepeat(config.right_analog_right, false);
             }
-        }
+          } //!(textinputinteractive_mode_active)
+        } // Analogs trigger keys 
 
         handleAnalogTrigger(
           state.current_l2 > config.deadzone_triggers,
@@ -1308,7 +1752,7 @@ bool handleEvent(const SDL_Event& event)
           state.current_r2 > config.deadzone_triggers,
           state.r2_was_pressed,
           config.r2);
-      }
+      } // end of else for indicating which axis was moved before checking whether it's assigned as mouse
       break;
     case SDL_CONTROLLERDEVICEADDED:
       if (xbox360_mode == true || config_mode == true) {
@@ -1354,9 +1798,17 @@ int main(int argc, char* argv[])
   }
 
   // Add textinput_preset environment variable if available
-  if (char* env_textinput = SDL_getenv("TEXTINPUT")) {
+  if (char* env_textinput = SDL_getenv("TEXTINPUTPRESET")) {
     textinputpreset_mode = true;
     config.text_input_preset = env_textinput;
+  }
+
+  // Add textinput_interactive environment variable if available
+  if (char* env_textinput_interactive = SDL_getenv("TEXTINPUTINTERACTIVE")) {
+    if (strcmp(env_textinput_interactive,"Y") == 0) {
+      textinputinteractive_mode = true;
+      textinputinteractive_mode_active = false;
+    }
   }
 
   if (argc > 1) {
@@ -1368,6 +1820,9 @@ int main(int argc, char* argv[])
   {      
     if (strcmp(argv[ii], "xbox360") == 0) {
       xbox360_mode = true;
+    } else if (strcmp(argv[ii], "textinput") == 0) {
+      textinputinteractive_mode = true;
+      textinputinteractive_mode_active = false;
     } else if (strcmp(argv[ii], "-c") == 0) {
       if (ii + 1 < argc) { 
         config_mode = true;
@@ -1391,10 +1846,28 @@ int main(int argc, char* argv[])
         kill_mode = true;
         sudo_kill = true;
         AppToKill = argv[++ii];
+        if (strcmp(AppToKill, "exult") == 0) { // special adjustment for Exult, which adds double spaces during text input
+          app_exult_adjust = true;
+        }
       }
       
     } 
   }
+
+  // Add textinput_interactive mode, check for extra options via environment variable if available
+  if (textinputinteractive_mode) {
+    if (char* env_textinput_nocaps = SDL_getenv("TEXTINPUTNOAUTOCAPITALS")) { // don't automatically use capitals for first letter or after space
+      if (strcmp(env_textinput_nocaps,"Y") == 0) {
+        textinputinteractive_noautocapitals = true;
+      }
+    }
+    if (char* env_textinput_extrasymbols = SDL_getenv("TEXTINPUTADDEXTRASYMBOLS")) { // extended characters set for interactive text input mode
+      if (strcmp(env_textinput_extrasymbols,"Y") == 0) {
+        textinputinteractive_extrasymbols = true;
+      }
+    }    
+  }
+
 
   // Create fake input device (not needed in kill mode)
   //if (!kill_mode) {  
@@ -1422,7 +1895,7 @@ int main(int argc, char* argv[])
         printf("Using ConfigFile %s\n", config_file);
         readConfigFile(config_file);
       }
-     // if we are in textinput preset mode, note the text preset
+      // if we are in textinput mode, note the text preset
       if (textinputpreset_mode) {
         if (config.text_input_preset != NULL) {
             printf("text input preset is %s\n", config.text_input_preset);
@@ -1430,7 +1903,14 @@ int main(int argc, char* argv[])
             printf("text input preset is not set\n");
             //textinputpreset_mode = false;   removed so that Enter key can be pressed
         }
-      }      
+      } 
+      // if we are in textinputinteractive mode, initialise the character set
+      if (textinputinteractive_mode) {
+        initialiseCharacterSet();
+        printf("interactive text input mode available\n");
+        if (textinputinteractive_noautocapitals) printf("interactive text input mode without auto-capitals\n");
+        if (textinputinteractive_extrasymbols) printf("interactive text input mode includes extra symbols\n");
+      }    
      }
     // Create input device into input sub-system
     write(uinp_fd, &uidev, sizeof(uidev));

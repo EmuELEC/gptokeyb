@@ -4,6 +4,7 @@ Gamepad to Keyboard/mouse/xbox360(gamepad) emulator
 
 Based on code by: [Kris Henriksen](https://github.com/krishenriksen/AnberPorts/tree/master/AnberPorts-Joystick) and fake Xbox code from: https://github.com/Emanem/js2xbox   
 Modified to use SDL2 by: [Nikolai Wuttke](https://github.com/lethal-guitar) & [Shanti Gilbert](https://github.com/shantigilbert) for https://github.com/EmuELEC/EmuELEC
+Interactive text entry added by [Robin Duxfield](https://github.com/romadu)
 
 ## Build
 `make all`
@@ -17,8 +18,14 @@ gptokeyb provides a kill switch for an application and mapping of gamepad button
 `SDL_GAMECONTROLLERCONFIG_FILE` must be set so the gamepad buttons are properly assigned within gptokeyb, e.g. `SDL_GAMECONTROLLERCONFIG_FILE="./gamecontrollerdb.txt"`
 `SDL_GAMECONTROLLERCONFIG_FILE` is automatically set in Emuelec
 
+`export HOTKEY` sets the button used as hotkey. `BACK` button is automatically selected as hotkey, unless overridden by `HOTKEY` environment variable
+
+`export TEXTINPUT="my name"` assigns text as preset for input so that `my name` is automatically entered, once triggered
+
 ### Command Line Options
 `xbox360` selects xbox360 joystick mode
+
+`textinput` select interactive text input mode (see below)
 
 `-c <config_file_path_and_name.gptk>` specifies button mapping for keyboard and mouse functions, e.g. `-c "./app.gptk"`
 
@@ -77,7 +84,7 @@ The default delay and interval are based on SDL1.2 standard and can be adjusted 
 SDL_DEFAULT_REPEAT_INTERVAL 30
 ```
 
-Key repeat is configured by added `gamepad_button = repeat` as a separate line, in addition to the line `gamepad_button = keyboard key`. The following assigns arrow keys with key repeat to the gamepad d-pad and left analog stick.
+Key repeat is configured by adding `gamepad_button = repeat` as a separate line, in addition to the line `gamepad_button = keyboard key`. The following assigns arrow keys with key repeat to the gamepad d-pad and left analog stick.
 ```
 up = up
 up = repeat
@@ -96,3 +103,52 @@ left_analog_left = repeat
 left_analog_right = right
 left_analog_right = repeat
 ```
+
+### Text Entry Options
+Text entry is possible, either by sending a preset (e.g. to enter your name to begin a game) or via an interactive input mode that's similar to entry of initials for a high score table 
+
+Text entry options are enabled by environment variable settings
+```
+export TEXTINPUTPRESET="My Name"         # defines preset text to insert
+export TEXTINPUTINTERACTIVE = "Y"        # enables interactive text input mode
+export TEXTINPUTNOAUTOCAPITALS = "Y"     # disables automatic capitalisation of first letter of words in interactive text input mode
+export TEXTINPUTADDEXTRASYMBOLS = "Y"    # enables additional symbols for interactive text input
+```
+
+Interactive input mode is also enabled by command line option `"textinput"`
+
+#### Preset Text Input
+Text Entry preset mode is enabled by `TEXTINPUTPRESET` environment variable whereby a name preset can be easily entered whenever a game displays a text prompt. When Text Entry is triggered with `HOTKEY+D-PAD LEFT`, the preset text is entered as a series of key strokes.
+
+Text Entry preset mode also assigns `HOTKEY+D-PAD RIGHT` to send `ENTER`.
+
+CONTROLS
+`HOTKEY+D-PAD LEFT` to send preset
+`HOTKEY+D-PAD RIGHT` to send `ENTER`
+
+#### Interactive Text Input
+Interactive Text Entry mode is enabled by launching GPtoKEYB with command line option `"textinput"` or by environment variable `TEXTINPUTINTERACTIVE = "Y"` , and is triggered with `HOTKEY+D-PAD DOWN`. Once activated, Interactive Text Entry mode works similarly to entering initials for game highscores, with `D-PAD UP/DOWN` switching between letters for the currently selected character, `D-PAD RIGHT` moving to next character, `D-PAD LEFT` deleting and moving back one character, `SELECT/HOTKEY` cancelling interactive text entry, and `START` to confirm and exit interactive text entry. `A` sends `ENTER KEY` in interactive text entry mode.
+
+##### Interactive Input Mode Controls
+```
+HOTKEY+D-PAD DOWN to activate
+once activated
+D-PAD UP = previous letter
+D-PAD DOWN = next letter
+D-PAD RIGHT = next character
+D-PAD LEFT = delete and move back one character
+L1 = jump back 13 letters for current character
+R1 = jump forward 13 letters for current character
+A = send ENTER key
+SELECT/HOTKEY = cancel and exit mode (deletes all characters)
+START = confirm and exit mode (also sends ENTER key)
+```
+
+##### Capitals
+By default Interactive Text Entry mode will start with `A` as the first letter and immediately after a space, and `a` otherwise, unless environment variable `TEXTINPUTNOAUTOCAPITALS = "Y"` is set, whereby all letters will start as `a`.
+
+##### Symbols
+By default Interactive Text Entry mode includes only a limited number of symbols "[space] . , - _ ( )", and a full set of symbols is included with environment variable `TEXTINPUTADDEXTRASYMBOLS = "Y"`.
+
+##### Exiting mode
+Interactive Text Entry relies on the game providing a text prompt and sends key strokes to add and change characters, so it is only useful in these situations. Interactive Text Entry is automatically exited when either `SELECT`, `HOTKEY` or `START` are pressed, to minimise issues by accidentally triggering this mode.
