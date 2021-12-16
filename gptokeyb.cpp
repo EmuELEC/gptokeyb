@@ -111,7 +111,6 @@ bool textinputpreset_mode = false;
 bool textinputinteractive_mode = false;
 bool textinputinteractive_mode_active = false;
 bool textinputinteractive_noautocapitals = false;
-bool textinputinteractive_onlyselectexits = false;
 bool textinputinteractive_extrasymbols = false;
 bool app_exult_adjust = false;
 const int maxKeysNoExtendedSymbols = 69; //number of keys available for interactive text input
@@ -930,6 +929,7 @@ void removeTextInputCharacter()
 void confirmTextInputCharacter()
 {
   emitTextInputKey(KEY_ENTER,false); //emit ENTER to confirm text input
+  printf("text input interactive mode - ENTER key sent\n");
 }
 
 void nextTextInputKey(bool SingleIncrease) // enable fast skipping if SingleIncrease = false
@@ -1343,6 +1343,12 @@ bool handleEvent(const SDL_Event& event)
             }
             break; //SDL_CONTROLLER_BUTTON_RIGHTSHOULDER
 
+          case SDL_CONTROLLER_BUTTON_A: //A buttons sends ENTER KEY
+            if (is_pressed) {
+              confirmTextInputCharacter();
+            }
+            break; //SDL_CONTROLLER_BUTTON_A
+
           case SDL_CONTROLLER_BUTTON_LEFTSTICK: // hotkey override
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
             if (is_pressed) { // cancel key input and disable interactive input mode
@@ -1363,8 +1369,6 @@ bool handleEvent(const SDL_Event& event)
             
           case SDL_CONTROLLER_BUTTON_START:
             if (is_pressed) { 
-              confirmTextInputCharacter();
-              
               //disable interactive mode
               textinputinteractive_mode_active = false;
               state.textinputinteractivetrigger_jsdevice = 0;
@@ -1374,6 +1378,7 @@ bool handleEvent(const SDL_Event& event)
               printf("text input interactive mode no longer active\n");
             }
             break; //SDL_CONTROLLER_BUTTON_START
+            
           }   //switch (event.cbutton.button) for textinputinteractive_mode_active     
         } else { //config mode (i.e. not textinputinteractive_mode_active)
         switch (event.cbutton.button) {
@@ -1849,11 +1854,6 @@ int main(int argc, char* argv[])
         textinputinteractive_noautocapitals = true;
       }
     }
-    if (char* env_textinput_selectonly = SDL_getenv("TEXTINPUTONLYSELECTEXITS")) { // don't exit interactive text input mode if START is pressed
-      if (strcmp(env_textinput_selectonly,"Y") == 0) {
-        textinputinteractive_onlyselectexits = true;
-      }
-    }
     if (char* env_textinput_extrasymbols = SDL_getenv("TEXTINPUTADDEXTRASYMBOLS")) { // extended characters set for interactive text input mode
       if (strcmp(env_textinput_extrasymbols,"Y") == 0) {
         textinputinteractive_extrasymbols = true;
@@ -1900,6 +1900,9 @@ int main(int argc, char* argv[])
       // if we are in textinputinteractive mode, initialise the character set
       if (textinputinteractive_mode) {
         initialiseCharacterSet();
+        printf("interactive text input mode available\n");
+        if (textinputinteractive_noautocapitals) printf("interactive text input mode without auto-capitals\n");
+        if (textinputinteractive_extrasymbols) printf("interactive text input mode includes extra symbols\n");
       }    
      }
     // Create input device into input sub-system
