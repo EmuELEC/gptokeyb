@@ -1278,7 +1278,6 @@ bool handleEvent(const SDL_Event& event)
                   removeTextInputCharacter(); //remove extra spaces            
                 }
                 initialiseCharacters();
-                current_key[current_character] = 0;
                 addTextInputCharacter();
               }
             }
@@ -1286,12 +1285,8 @@ bool handleEvent(const SDL_Event& event)
             
           case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: //add one more character
             if (is_pressed) {
-              if (character_set[current_key[current_character]] == KEY_SPACE) {
-                if (textinputinteractive_noautocapitals) {
-                  current_key[++current_character] = 0; // override - don't use capitals after a space
-                } else {
-                  current_key[++current_character] = 0; // use capitals after a space
-                }
+              if ((character_set[current_key[current_character]] == KEY_SPACE) && (!(textinputinteractive_noautocapitals))) {
+                current_key[++current_character] = 0; // use capitals after a space
               } else {
                 current_character++;
               }
@@ -1360,6 +1355,7 @@ bool handleEvent(const SDL_Event& event)
                   removeTextInputCharacter(); //remove extra spaces            
                 }
               }
+              initialiseCharacters(); //reset the character selections ready for new text to be added later
               textinputinteractive_mode_active = false;
               state.textinputinteractivetrigger_jsdevice = 0;
               state.textinputinteractivetrigger_pressed = false;
@@ -1544,7 +1540,7 @@ bool handleEvent(const SDL_Event& event)
              }
            } // sudo kill
         } //kill mode 
-        else if ((textinputpreset_mode) && (state.textinputpresettrigger_pressed && state.hotkey_pressed)) {
+        else if ((textinputpreset_mode) && (state.textinputpresettrigger_pressed && state.hotkey_pressed)) { //activate input preset mode - send predefined text as a series of keystrokes
             printf("text input preset pressed\n");
             if (state.hotkey_jsdevice == state.textinputpresettrigger_jsdevice) {
                 if (config.text_input_preset != NULL) {
@@ -1553,7 +1549,7 @@ bool handleEvent(const SDL_Event& event)
                 }
             }         
           } //input preset trigger mode (i.e. not kill mode)
-        else if ((textinputpreset_mode) && (state.textinputconfirmtrigger_pressed && state.hotkey_pressed)) {
+        else if ((textinputpreset_mode) && (state.textinputconfirmtrigger_pressed && state.hotkey_pressed)) { //activate input preset confirm mode - send ENTER key
             printf("text input confirm pressed\n");
             if (state.hotkey_jsdevice == state.textinputconfirmtrigger_jsdevice) {
                 printf("text input Enter key\n");
@@ -1562,7 +1558,7 @@ bool handleEvent(const SDL_Event& event)
                 emitKey(char_to_keycode("enter"), false);
             }
           } //input confirm trigger mode (i.e. not kill mode)         
-        else if ((textinputinteractive_mode) && (state.textinputinteractivetrigger_pressed && state.hotkey_pressed)) {
+        else if ((textinputinteractive_mode) && (state.textinputinteractivetrigger_pressed && state.hotkey_pressed)) { //activate interactive text input mode
             printf("text input interactive pressed\n");
             if (state.hotkey_jsdevice == state.textinputinteractivetrigger_jsdevice) {
                 printf("text input interactive mode active\n");
@@ -1571,7 +1567,7 @@ bool handleEvent(const SDL_Event& event)
                 emitKey(config.back, false); // release select key_press
                 if (hotkey_override && (strcmp(hotkey_code, "l3") == 0)) emitKey(config.l3, false); // release l3 hotkey key_press
                 current_character = 0;
-                current_key[current_character] = 0;
+
                 addTextInputCharacter();
             }
           } //input interactive trigger mode (i.e. not kill mode)
