@@ -1170,6 +1170,7 @@ bool handleEvent(const SDL_Event& event)
               if (current_character > 0) {
                 current_character--;
               } else if (current_character == 0) {
+                removeTextInputCharacter();
                 initialiseCharacters();
                 addTextInputCharacter();
               }
