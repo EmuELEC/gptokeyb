@@ -110,9 +110,9 @@ Text entry is possible, either by sending a preset (e.g. to enter your name to b
 Text entry options are enabled by environment variable settings
 ```
 export TEXTINPUTPRESET="My Name"         # defines preset text to insert
-export TEXTINPUTINTERACTIVE = "Y"        # enables interactive text input mode
-export TEXTINPUTNOAUTOCAPITALS = "Y"     # disables automatic capitalisation of first letter of words in interactive text input mode
-export TEXTINPUTADDEXTRASYMBOLS = "Y"    # enables additional symbols for interactive text input
+export TEXTINPUTINTERACTIVE="Y"        # enables interactive text input mode
+export TEXTINPUTNOAUTOCAPITALS="Y"     # disables automatic capitalisation of first letter of words in interactive text input mode
+export TEXTINPUTADDEXTRASYMBOLS="Y"    # enables additional symbols for interactive text input
 ```
 
 Interactive input mode is also enabled by command line option `"textinput"`
@@ -127,7 +127,7 @@ CONTROLS
 `HOTKEY+D-PAD RIGHT` to send `ENTER`
 
 #### Interactive Text Input
-Interactive Text Entry mode is enabled by launching GPtoKEYB with command line option `"textinput"` or by environment variable `TEXTINPUTINTERACTIVE = "Y"` , and is triggered with `HOTKEY+D-PAD DOWN`. Once activated, Interactive Text Entry mode works similarly to entering initials for game highscores, with `D-PAD UP/DOWN` switching between letters for the currently selected character, `D-PAD RIGHT` moving to next character, `D-PAD LEFT` deleting and moving back one character, `SELECT/HOTKEY` cancelling interactive text entry, and `START` to confirm and exit interactive text entry. `A` sends `ENTER KEY` in interactive text entry mode.
+Interactive Text Entry mode is enabled by launching GPtoKEYB with command line option `"textinput"` or by environment variable `TEXTINPUTINTERACTIVE="Y"` , and is triggered with `HOTKEY+D-PAD DOWN`. Once activated, Interactive Text Entry mode works similarly to entering initials for game highscores, with `D-PAD UP/DOWN` switching between letters for the currently selected character, `D-PAD RIGHT` moving to next character, `D-PAD LEFT` deleting and moving back one character, `SELECT/HOTKEY` cancelling interactive text entry, and `START` to confirm and exit interactive text entry. `A` sends `ENTER KEY` in interactive text entry mode.
 
 ##### Interactive Input Mode Controls
 ```
@@ -145,10 +145,10 @@ START = confirm and exit mode (also sends ENTER key)
 ```
 
 ##### Capitals
-By default Interactive Text Entry mode will start with `A` as the first letter and immediately after a space, and `a` otherwise, unless environment variable `TEXTINPUTNOAUTOCAPITALS = "Y"` is set, whereby all letters will start as `a`.
+By default Interactive Text Entry mode will start with `A` as the first letter and immediately after a space, and `a` otherwise, unless environment variable `TEXTINPUTNOAUTOCAPITALS="Y"` is set, whereby all letters will start as `a`.
 
 ##### Symbols
-By default Interactive Text Entry mode includes only a limited number of symbols "[space] . , - _ ( )", and a full set of symbols is included with environment variable `TEXTINPUTADDEXTRASYMBOLS = "Y"`.
+By default Interactive Text Entry mode includes only a limited number of symbols "[space] . , - _ ( )", and a full set of symbols is included with environment variable `TEXTINPUTADDEXTRASYMBOLS="Y"`.
 
 ##### Exiting mode
 Interactive Text Entry relies on the game providing a text prompt and sends key strokes to add and change characters, so it is only useful in these situations. Interactive Text Entry is automatically exited when either `SELECT`, `HOTKEY` or `START` are pressed, to minimise issues by accidentally triggering this mode.
