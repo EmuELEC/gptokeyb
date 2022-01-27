@@ -1395,11 +1395,6 @@ bool handleEvent(const SDL_Event& event)
         } else { //config mode (i.e. not textinputinteractive_mode_active)
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-            if (textinputpreset_mode) { //check if input preset mode is triggered
-                state.textinputpresettrigger_jsdevice = event.cdevice.which;
-                state.textinputpresettrigger_pressed = is_pressed;
-                if (state.hotkey_pressed && state.textinputpresettrigger_pressed) break; //hotkey combo triggered
-            }
             emitKey(config.left, is_pressed);
             if ((config.left_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.left))) {
                 setKeyRepeat(config.left, is_pressed);
@@ -1414,11 +1409,6 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-            if (textinputpreset_mode) { //check if input preset enter_press is triggered
-                state.textinputconfirmtrigger_jsdevice = event.cdevice.which;
-                state.textinputconfirmtrigger_pressed = is_pressed;
-                if (state.hotkey_pressed && state.textinputconfirmtrigger_pressed) break; //hotkey combo triggered
-            }
             emitKey(config.right, is_pressed);
             if ((config.right_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.right))){
                 setKeyRepeat(config.right, is_pressed);
@@ -1426,11 +1416,6 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-            if (textinputinteractive_mode) {
-                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
-                state.textinputinteractivetrigger_pressed = is_pressed;
-                if (state.hotkey_pressed && state.textinputinteractivetrigger_pressed) break; //hotkey combo triggered
-            }
             emitKey(config.down, is_pressed);
             if ((config.down_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.down))){
                 setKeyRepeat(config.down, is_pressed);
@@ -1438,6 +1423,11 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_A:
+            if (textinputpreset_mode) { //check if input preset enter_press is triggered
+                state.textinputconfirmtrigger_jsdevice = event.cdevice.which;
+                state.textinputconfirmtrigger_pressed = is_pressed;
+                if (state.hotkey_pressed && state.textinputconfirmtrigger_pressed) break; //hotkey combo triggered
+            }
             emitKey(config.a, is_pressed);
             if ((config.a_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.a))){
                 setKeyRepeat(config.a, is_pressed);
@@ -1452,6 +1442,11 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_X:
+            if (textinputinteractive_mode) {
+                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
+                state.textinputinteractivetrigger_pressed = is_pressed;
+                if (state.hotkey_pressed && state.textinputinteractivetrigger_pressed) break; //hotkey combo triggered
+            }
             emitKey(config.x, is_pressed);
             if ((config.x_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.x))){
                 setKeyRepeat(config.x, is_pressed);
@@ -1459,6 +1454,11 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_Y:
+            if (textinputpreset_mode) { //check if input preset mode is triggered
+                state.textinputpresettrigger_jsdevice = event.cdevice.which;
+                state.textinputpresettrigger_pressed = is_pressed;
+                if (state.hotkey_pressed && state.textinputpresettrigger_pressed) break; //hotkey combo triggered
+            }
             emitKey(config.y, is_pressed);
             if ((config.y_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.y))){
                 setKeyRepeat(config.y, is_pressed);
@@ -1489,6 +1489,14 @@ bool handleEvent(const SDL_Event& event)
               emitKeyPendingKeyToEmit = config.l3;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.l3_repeat;
+            } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
+              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
+              SDL_Delay(16);
+              emitKey(config.l3, is_pressed);
+              //note: hotkey cannot be assigned for key repeat; release key repeat for completeness
+              if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
+                setKeyRepeat(config.l3, is_pressed);
+              }
             } else {
               emitKey(config.l3, is_pressed);            
               if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
@@ -1514,6 +1522,14 @@ bool handleEvent(const SDL_Event& event)
               emitKeyPendingKeyToEmit = config.guide;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.guide_repeat;
+            } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
+              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
+              SDL_Delay(16);
+              emitKey(config.guide, is_pressed);
+              //note: hotkey cannot be assigned for key repeat; release key repeat for completeness
+              if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
+                setKeyRepeat(config.guide, is_pressed);
+                }
             } else {
               emitKey(config.guide, is_pressed);
               if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
@@ -1532,7 +1548,16 @@ bool handleEvent(const SDL_Event& event)
               emitKeyPendingKeyToEmit = config.back;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.back_repeat;
-            } else {
+            } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
+              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
+              SDL_Delay(16);
+              emitKey(config.back, is_pressed);
+              //note: hotkey cannot be assigned for key repeat; release key repeat for completeness
+              if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
+                setKeyRepeat(config.back, is_pressed);
+              }
+          } //hotkey check prior to emitting key, to avoid conflicts with emitkey and hotkey press        
+            else {
               emitKey(config.back, is_pressed);
               if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
                 setKeyRepeat(config.back, is_pressed);
@@ -1622,14 +1647,6 @@ bool handleEvent(const SDL_Event& event)
                 addTextInputCharacter();
             }
           } //input interactive trigger mode (i.e. not kill mode)
-        else if (emitKeyPending) {
-            emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
-            if ((emitKeyPendingRepeat && emitKeyPendingIsPressed && (state.key_to_repeat == 0)) || (!(emitKeyPendingIsPressed) && (state.key_to_repeat == emitKeyPendingKeyToEmit))){
-                setKeyRepeat(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
-            }
-            emitKeyPending = false;
-            emitKeyWasPending = true;
-          } //hotkey check prior to emitting key, to avoid conflicts with emitkey and hotkey press        
       }  //xbox or config/default
     } break; // case SDL_CONTROLLERBUTTONUP: SDL_CONTROLLERBUTTONDOWN:
 
