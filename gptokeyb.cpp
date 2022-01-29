@@ -113,6 +113,11 @@ bool textinputinteractive_mode_active = false;
 bool textinputinteractive_noautocapitals = false;
 bool textinputinteractive_extrasymbols = false;
 bool app_exult_adjust = false;
+bool emitKeyPending = false; //check for hotkey trigger status before emitting key assigned to hotkey
+bool emitKeyPendingIsPressed = false; //check for hotkey trigger status before emitting key assigned to hotkey
+bool emitKeyPendingRepeat = false; //check for hotkey trigger status before setting key repeat for hotkey key
+bool emitKeyWasPending = false; //hotkey key will be emitted before trigger key is pressed, so keep track and backspace, if necessary
+int emitKeyPendingKeyToEmit; //check for hotkey trigger status before emitting this key
 const int maxKeysNoExtendedSymbols = 69; //number of keys available for interactive text input
 const int maxKeysWithSymbols = 96; //number of keys available for interactive text input with extra symbols
 int maxKeys = maxKeysNoExtendedSymbols;
@@ -1157,126 +1162,15 @@ bool handleEvent(const SDL_Event& event)
     case SDL_CONTROLLERBUTTONUP: {
       const bool is_pressed = event.type == SDL_CONTROLLERBUTTONDOWN;
 
-      if (xbox360_mode) {
-        // Fake Xbox360 mode
-        switch (event.cbutton.button) {
-          case SDL_CONTROLLER_BUTTON_A:
-            emitKey(BTN_A, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_B:
-            emitKey(BTN_B, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_X:
-            emitKey(BTN_X, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_Y:
-            emitKey(BTN_Y, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
-            emitKey(BTN_TL, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-            emitKey(BTN_TR, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_LEFTSTICK:
-            emitKey(BTN_THUMBL, is_pressed);
-            if (kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) {
-                state.hotkey_jsdevice = event.cdevice.which;
-                state.hotkey_pressed = is_pressed;
-            }
-            break;
-
-          case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
-            emitKey(BTN_THUMBR, is_pressed);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_BACK: // aka select
-            emitKey(BTN_SELECT, is_pressed);
-            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0))) {
-              state.hotkey_jsdevice = event.cdevice.which;
-              state.hotkey_pressed = is_pressed;
-           }
-            break;
-
-          case SDL_CONTROLLER_BUTTON_GUIDE:
-            emitKey(BTN_MODE, is_pressed);
-            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0))) {
-              state.hotkey_jsdevice = event.cdevice.which;
-              state.hotkey_pressed = is_pressed;
-            }
-            break;
-
-          case SDL_CONTROLLER_BUTTON_START:
-            emitKey(BTN_START, is_pressed);
-            if (kill_mode) {
-              state.start_jsdevice = event.cdevice.which;
-              state.start_pressed = is_pressed;
-            }
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_UP:
-            emitAxisMotion(ABS_HAT0Y, is_pressed ? -1 : 0);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-            emitAxisMotion(ABS_HAT0Y, is_pressed ? 1 : 0);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-            emitAxisMotion(ABS_HAT0X, is_pressed ? -1 : 0);
-            break;
-
-          case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-            emitAxisMotion(ABS_HAT0X, is_pressed ? 1 : 0);
-            break;
-        }
-         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {      
-          if (! sudo_kill) {
-             // printf("Killing: %s\n", AppToKill);
-             if (state.start_jsdevice == state.hotkey_jsdevice) {
-                system((" killall  '" + std::string(AppToKill) + "' ").c_str());
-                system("show_splash.sh exit");
-               sleep(3);
-               if (
-                 system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) ==
-                 0) {
-                 printf("Forcefully Killing: %s\n", AppToKill);
-                 system(
-                   (" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
-               }
-            exit(0); 
-            }             
-          } else {
-             if (state.start_jsdevice == state.hotkey_jsdevice) {
-                system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
-               sleep(3);
-               exit(0);
-             }
-           } // sudo kill
-        } //kill mode
-       
-      } else {
-        // Config / default mode
         if (textinputinteractive_mode_active) {
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_DPAD_LEFT: //move back one character
             if (is_pressed) {
               removeTextInputCharacter();
-              if ((character_set[current_key[current_character]] == KEY_SPACE) && app_exult_adjust) {
-                removeTextInputCharacter(); //remove extra spaces            
-              }
               if (current_character > 0) {
                 current_character--;
               } else if (current_character == 0) {
-                if (app_exult_adjust) {
-                  removeTextInputCharacter(); //remove extra spaces            
-                }
+                removeTextInputCharacter();
                 initialiseCharacters();
                 addTextInputCharacter();
               }
@@ -1379,6 +1273,125 @@ bool handleEvent(const SDL_Event& event)
             break; //SDL_CONTROLLER_BUTTON_START
             
           }   //switch (event.cbutton.button) for textinputinteractive_mode_active     
+      } else if (xbox360_mode) {
+        // Fake Xbox360 mode
+        switch (event.cbutton.button) {
+          case SDL_CONTROLLER_BUTTON_A:
+            emitKey(BTN_A, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_B:
+            emitKey(BTN_B, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_X:
+            emitKey(BTN_X, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_Y:
+            emitKey(BTN_Y, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+            emitKey(BTN_TL, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+            emitKey(BTN_TR, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_LEFTSTICK:
+            emitKey(BTN_THUMBL, is_pressed);
+            if (kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) {
+                state.hotkey_jsdevice = event.cdevice.which;
+                state.hotkey_pressed = is_pressed;
+            }
+            break;
+
+          case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+            emitKey(BTN_THUMBR, is_pressed);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_BACK: // aka select
+            emitKey(BTN_SELECT, is_pressed);
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0))) {
+              state.hotkey_jsdevice = event.cdevice.which;
+              state.hotkey_pressed = is_pressed;
+           }
+            break;
+
+          case SDL_CONTROLLER_BUTTON_GUIDE:
+            emitKey(BTN_MODE, is_pressed);
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0))) {
+              state.hotkey_jsdevice = event.cdevice.which;
+              state.hotkey_pressed = is_pressed;
+            }
+            break;
+
+          case SDL_CONTROLLER_BUTTON_START:
+            emitKey(BTN_START, is_pressed);
+            if (kill_mode) {
+              state.start_jsdevice = event.cdevice.which;
+              state.start_pressed = is_pressed;
+            }
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_UP:
+            emitAxisMotion(ABS_HAT0Y, is_pressed ? -1 : 0);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+            if (textinputinteractive_mode) {
+                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
+                state.textinputinteractivetrigger_pressed = is_pressed;
+                if (state.hotkey_pressed && state.textinputinteractivetrigger_pressed) break; //hotkey combo triggered
+            }
+            emitAxisMotion(ABS_HAT0Y, is_pressed ? 1 : 0);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+            emitAxisMotion(ABS_HAT0X, is_pressed ? -1 : 0);
+            break;
+
+          case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+            emitAxisMotion(ABS_HAT0X, is_pressed ? 1 : 0);
+            break;
+        }
+         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {      
+          if (! sudo_kill) {
+             // printf("Killing: %s\n", AppToKill);
+             if (state.start_jsdevice == state.hotkey_jsdevice) {
+                system((" killall  '" + std::string(AppToKill) + "' ").c_str());
+                system("show_splash.sh exit");
+               sleep(3);
+               if (
+                 system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) ==
+                 0) {
+                 printf("Forcefully Killing: %s\n", AppToKill);
+                 system(
+                   (" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
+               }
+            exit(0); 
+            }             
+          } else {
+             if (state.start_jsdevice == state.hotkey_jsdevice) {
+                system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
+               sleep(3);
+               exit(0);
+             }
+           } // sudo kill
+        } //kill mode
+        else if ((textinputinteractive_mode) && (state.textinputinteractivetrigger_pressed && state.hotkey_pressed)) { //activate interactive text input mode
+            printf("text input interactive pressed\n");
+            if (state.hotkey_jsdevice == state.textinputinteractivetrigger_jsdevice) {
+                printf("text input interactive mode active\n");
+                textinputinteractive_mode_active = true;
+                current_character = 0;
+
+                addTextInputCharacter();
+            }
+          } //input interactive trigger mode (i.e. not kill mode)
+   
         } else { //config mode (i.e. not textinputinteractive_mode_active)
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
@@ -1386,14 +1399,10 @@ bool handleEvent(const SDL_Event& event)
             if ((config.left_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.left))) {
                 setKeyRepeat(config.left, is_pressed);
             }
-            if (textinputpreset_mode) {
-                state.textinputpresettrigger_jsdevice = event.cdevice.which;
-                state.textinputpresettrigger_pressed = is_pressed;
-            }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_UP:
-            emitKey(config.up, is_pressed);
+            emitKey(config.up, is_pressed); 
             if ((config.up_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.up))){
                 setKeyRepeat(config.up, is_pressed);
             }
@@ -1404,18 +1413,9 @@ bool handleEvent(const SDL_Event& event)
             if ((config.right_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.right))){
                 setKeyRepeat(config.right, is_pressed);
             }
-            if (textinputpreset_mode) {
-                state.textinputconfirmtrigger_jsdevice = event.cdevice.which;
-                state.textinputconfirmtrigger_pressed = is_pressed;
-            }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-            if (textinputinteractive_mode) {
-                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
-                state.textinputinteractivetrigger_pressed = is_pressed;
-                if (state.hotkey_pressed) break;
-            }
             emitKey(config.down, is_pressed);
             if ((config.down_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.down))){
                 setKeyRepeat(config.down, is_pressed);
@@ -1423,6 +1423,11 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_A:
+            if (textinputpreset_mode) { //check if input preset enter_press is triggered
+                state.textinputconfirmtrigger_jsdevice = event.cdevice.which;
+                state.textinputconfirmtrigger_pressed = is_pressed;
+                if (state.hotkey_pressed && state.textinputconfirmtrigger_pressed) break; //hotkey combo triggered
+            }
             emitKey(config.a, is_pressed);
             if ((config.a_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.a))){
                 setKeyRepeat(config.a, is_pressed);
@@ -1437,6 +1442,11 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_X:
+            if (textinputinteractive_mode) {
+                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
+                state.textinputinteractivetrigger_pressed = is_pressed;
+                if (state.hotkey_pressed && state.textinputinteractivetrigger_pressed) break; //hotkey combo triggered
+            }
             emitKey(config.x, is_pressed);
             if ((config.x_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.x))){
                 setKeyRepeat(config.x, is_pressed);
@@ -1444,6 +1454,11 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_Y:
+            if (textinputpreset_mode) { //check if input preset mode is triggered
+                state.textinputpresettrigger_jsdevice = event.cdevice.which;
+                state.textinputpresettrigger_pressed = is_pressed;
+                if (state.hotkey_pressed && state.textinputpresettrigger_pressed) break; //hotkey combo triggered
+            }
             emitKey(config.y, is_pressed);
             if ((config.y_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.y))){
                 setKeyRepeat(config.y, is_pressed);
@@ -1465,13 +1480,28 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_LEFTSTICK:
-            emitKey(config.l3, is_pressed);
-            if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
-                setKeyRepeat(config.l3, is_pressed);
-            }
             if ((kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) || (textinputpreset_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) || (textinputinteractive_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0))) {
                 state.hotkey_jsdevice = event.cdevice.which;
                 state.hotkey_pressed = is_pressed;
+            }
+            if (state.hotkey_pressed && (state.hotkey_jsdevice == event.cdevice.which)) {
+              emitKeyPending =  true;
+              emitKeyPendingKeyToEmit = config.l3;
+              emitKeyPendingIsPressed = is_pressed;
+              emitKeyPendingRepeat = config.l3_repeat;
+            } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
+              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
+              SDL_Delay(16);
+              emitKey(config.l3, is_pressed);
+              //note: hotkey cannot be assigned for key repeat; release key repeat for completeness
+              if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
+                setKeyRepeat(config.l3, is_pressed);
+              }
+            } else {
+              emitKey(config.l3, is_pressed);            
+              if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
+                setKeyRepeat(config.l3, is_pressed);
+              }
             }
             break;
 
@@ -1483,24 +1513,55 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_GUIDE:
-            emitKey(config.guide, is_pressed);
-            if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
-                setKeyRepeat(config.guide, is_pressed);
-            }
             if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "guide") == 0)) || (textinputinteractive_mode && !(hotkey_override)) || (textinputinteractive_mode && (strcmp(hotkey_code, "guide") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
             }
+            if (state.hotkey_pressed && (state.hotkey_jsdevice == event.cdevice.which)) {
+              emitKeyPending =  true;
+              emitKeyPendingKeyToEmit = config.guide;
+              emitKeyPendingIsPressed = is_pressed;
+              emitKeyPendingRepeat = config.guide_repeat;
+            } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
+              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
+              SDL_Delay(16);
+              emitKey(config.guide, is_pressed);
+              //note: hotkey cannot be assigned for key repeat; release key repeat for completeness
+              if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
+                setKeyRepeat(config.guide, is_pressed);
+                }
+            } else {
+              emitKey(config.guide, is_pressed);
+              if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
+                setKeyRepeat(config.guide, is_pressed);
+              }
+            }
             break;
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
-            emitKey(config.back, is_pressed);
-            if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
-                setKeyRepeat(config.back, is_pressed);
-            }
             if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "back") == 0)) || (textinputinteractive_mode && !(hotkey_override)) || (textinputinteractive_mode && (strcmp(hotkey_code, "back") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
+            }
+            if (state.hotkey_pressed && (state.hotkey_jsdevice == event.cdevice.which)) {
+              emitKeyPending =  true;
+              emitKeyPendingKeyToEmit = config.back;
+              emitKeyPendingIsPressed = is_pressed;
+              emitKeyPendingRepeat = config.back_repeat;
+            } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
+              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
+              SDL_Delay(16);
+              emitKey(config.back, is_pressed);
+              //note: hotkey cannot be assigned for key repeat; release key repeat for completeness
+              if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
+                setKeyRepeat(config.back, is_pressed);
+              }
+          } //hotkey check prior to emitting key, to avoid conflicts with emitkey and hotkey press        
+            else {
+              emitKey(config.back, is_pressed);
+              if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
+                setKeyRepeat(config.back, is_pressed);
+              }
             }
             break;
 
@@ -1512,7 +1573,7 @@ bool handleEvent(const SDL_Event& event)
             if (kill_mode) {
                 state.start_jsdevice = event.cdevice.which;
                 state.start_pressed = is_pressed;
-            };
+            }
             break;
         } //switch
         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {
@@ -1542,23 +1603,26 @@ bool handleEvent(const SDL_Event& event)
         } //kill mode 
         else if ((textinputpreset_mode) && (state.textinputpresettrigger_pressed && state.hotkey_pressed)) { //activate input preset mode - send predefined text as a series of keystrokes
             printf("text input preset pressed\n");
+            if (emitKeyWasPending) {
+              emitKey(emitKeyPendingKeyToEmit, false); // release hotkey key_press
+              removeTextInputCharacter(); //delete key emitted when hotkey was pressed
+              emitKeyWasPending = false;
+            }
             if (state.hotkey_jsdevice == state.textinputpresettrigger_jsdevice) {
                 if (config.text_input_preset != NULL) {
                     printf("text input processing %s\n", config.text_input_preset);
                     processKeys();
                 }
-            } 
-         }
-         else if (textinputpreset_mode && state.textinputconfirmtrigger_pressed && state.hotkey_pressed) {     
-            if (state.hotkey_jsdevice == state.textinputconfirmtrigger_jsdevice) {
-                printf("text input enter key\n");
-                emitKey(char_to_keycode("enter"), true);
-                SDL_Delay(15);
-                emitKey(char_to_keycode("enter"), false);
-            }         
-          } //input preset trigger mode (i.e. not kill mode)
+            }
+ 
+         } //input preset trigger mode (i.e. not kill mode)
         else if ((textinputpreset_mode) && (state.textinputconfirmtrigger_pressed && state.hotkey_pressed)) { //activate input preset confirm mode - send ENTER key
             printf("text input confirm pressed\n");
+            if (emitKeyWasPending) {
+              emitKey(emitKeyPendingKeyToEmit, false); // release hotkey key_press
+              removeTextInputCharacter(); //delete key emitted when hotkey was pressed
+              emitKeyWasPending = false;
+            }
             if (state.hotkey_jsdevice == state.textinputconfirmtrigger_jsdevice) {
                 printf("text input Enter key\n");
                 emitKey(char_to_keycode("enter"), true);
@@ -1568,18 +1632,21 @@ bool handleEvent(const SDL_Event& event)
           } //input confirm trigger mode (i.e. not kill mode)         
         else if ((textinputinteractive_mode) && (state.textinputinteractivetrigger_pressed && state.hotkey_pressed)) { //activate interactive text input mode
             printf("text input interactive pressed\n");
+            if (emitKeyWasPending) {
+              emitKey(emitKeyPendingKeyToEmit, false); // release hotkey key_press
+              removeTextInputCharacter(); //delete key emitted when hotkey was pressed
+              emitKeyWasPending = false;
+            }
             if (state.hotkey_jsdevice == state.textinputinteractivetrigger_jsdevice) {
                 printf("text input interactive mode active\n");
                 textinputinteractive_mode_active = true;
                 SDL_RemoveTimer( state.key_repeat_timer_id ); // disable any active key repeat timer
-                emitKey(config.back, false); // release select key_press
                 if (hotkey_override && (strcmp(hotkey_code, "l3") == 0)) emitKey(config.l3, false); // release l3 hotkey key_press
                 current_character = 0;
 
                 addTextInputCharacter();
             }
           } //input interactive trigger mode (i.e. not kill mode)
-        } //textinput interactive mode         
       }  //xbox or config/default
     } break; // case SDL_CONTROLLERBUTTONUP: SDL_CONTROLLERBUTTONDOWN:
 
@@ -1871,7 +1938,7 @@ int main(int argc, char* argv[])
 
   // Create fake input device (not needed in kill mode)
   //if (!kill_mode) {  
-  if (config_mode || xbox360_mode) { // initialise device, even in kill mode, now that kill mode will work with config & xbox modes
+  if (config_mode || xbox360_mode || textinputinteractive_mode) { // initialise device, even in kill mode, now that kill mode will work with config & xbox modes
     uinp_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
     if (uinp_fd < 0) {
       printf("Unable to open /dev/uinput\n");
@@ -1904,14 +1971,15 @@ int main(int argc, char* argv[])
             //textinputpreset_mode = false;   removed so that Enter key can be pressed
         }
       } 
-      // if we are in textinputinteractive mode, initialise the character set
-      if (textinputinteractive_mode) {
+    }
+            // if we are in textinputinteractive mode, initialise the character set
+    if (textinputinteractive_mode) {
         initialiseCharacterSet();
         printf("interactive text input mode available\n");
         if (textinputinteractive_noautocapitals) printf("interactive text input mode without auto-capitals\n");
         if (textinputinteractive_extrasymbols) printf("interactive text input mode includes extra symbols\n");
-      }    
-     }
+    
+    }
     // Create input device into input sub-system
     write(uinp_fd, &uidev, sizeof(uidev));
 
