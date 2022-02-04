@@ -1237,6 +1237,13 @@ bool handleEvent(const SDL_Event& event)
           case SDL_CONTROLLER_BUTTON_A: //A buttons sends ENTER KEY
             if (is_pressed) {
               confirmTextInputCharacter();
+              //disable interactive mode
+              textinputinteractive_mode_active = false;
+              state.textinputinteractivetrigger_jsdevice = 0;
+              state.textinputinteractivetrigger_pressed = false;
+              state.hotkey_jsdevice = 0;
+              state.hotkey_pressed = false;
+              printf("text input interactive mode no longer active\n");
             }
             break; //SDL_CONTROLLER_BUTTON_A
 
@@ -1285,6 +1292,11 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_X:
+            if (textinputinteractive_mode) {
+                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
+                state.textinputinteractivetrigger_pressed = is_pressed;
+                if (state.hotkey_pressed && state.textinputinteractivetrigger_pressed) break; //hotkey combo triggered
+            }
             emitKey(BTN_X, is_pressed);
             break;
 
@@ -1341,11 +1353,6 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-            if (textinputinteractive_mode) {
-                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
-                state.textinputinteractivetrigger_pressed = is_pressed;
-                if (state.hotkey_pressed && state.textinputinteractivetrigger_pressed) break; //hotkey combo triggered
-            }
             emitAxisMotion(ABS_HAT0Y, is_pressed ? 1 : 0);
             break;
 
