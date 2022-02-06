@@ -139,7 +139,7 @@ D-PAD RIGHT = next character
 D-PAD LEFT = delete and move back one character
 L1 = jump back 13 letters for current character
 R1 = jump forward 13 letters for current character
-A = send ENTER key
+A = send ENTER key and exit mode
 SELECT/HOTKEY = cancel and exit mode (deletes all characters)
 START = confirm and exit mode (also sends ENTER key)
 ```
