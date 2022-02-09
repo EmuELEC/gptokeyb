@@ -129,6 +129,7 @@ int current_key[maxChars]; // current key selected for each key
 char* AppToKill;
 bool config_mode = false;
 bool hotkey_override = false;
+bool emuelec_override = false;
 char* hotkey_code;
 
 struct
@@ -1326,10 +1327,12 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
             emitKey(BTN_SELECT, is_pressed);
+            if (!emuelec_override) {
             if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
            }
+       }
             break;
 
           case SDL_CONTROLLER_BUTTON_GUIDE:
@@ -1546,9 +1549,11 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
+            if (!emuelec_override) {
             if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "back") == 0)) || (textinputinteractive_mode && !(hotkey_override)) || (textinputinteractive_mode && (strcmp(hotkey_code, "back") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
+            }
             }
             if (state.hotkey_pressed && (state.hotkey_jsdevice == event.cdevice.which)) {
               emitKeyPending =  true;
@@ -1869,6 +1874,10 @@ int main(int argc, char* argv[])
   if (char* env_hotkey = SDL_getenv("HOTKEY")) {
     hotkey_override = true;
     hotkey_code = env_hotkey;
+  }
+  // Run in EmuELEC mode
+  if (SDL_getenv("EMUELEC")) {
+    emuelec_override = true;
   }
 
   // Add textinput_preset environment variable if available
