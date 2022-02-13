@@ -40,35 +40,37 @@ gptokeyb provides a kill switch for an application and mapping of gamepad button
 ### Keyboard Mapping Options
 The config file that specifies button mapping for keyboard and mouse functions takes the form of `%s = %s` which is `gamepad button` = `keyboard key`. Any comment lines beginning with `#` are ignored. Deadzone values are used for analog sticks and triggers, and may be device specific. `mouse_scale` affects the speed of mouse movement, with a larger value causing slower movement. `mouse_scale = 8192` generally works well for RK3326 devices.
 
+The `keyboard key` values must be in lowercase and simple text strings are translated into key codes, for example `enter` means `KEY_ENTER`
+
 Default mappings are:
-```back = KEY_ESC
-start = KEY_ENTER
-guide = KEY_ENTER
-a = KEY_X
-b = KEY_Z
-x = KEY_C
-y = KEY_A
-l1 = KEY_RIGHTSHIFT
-l2 = KEY_HOME
-l3 = BTN_LEFT
-r1 = KEY_LEFTSHIFT
-r2 = KEY_END
-r3 = BTN_RIGHT
-up = KEY_UP
-down = KEY_DOWN
-left = KEY_LEFT
-right = KEY_RIGHT
+```back = esc
+start = enter
+guide = enter
+a = x
+b = z
+x = c
+y = a
+l1 = rightshift
+l2 = home
+l3 = mouse_right
+r1 = leftshift
+r2 = end
+r3 = mouse_left
+up = up
+down = down
+left = left
+right = right
 
 left_analog_as_mouse = false
 right_analog_as_mouse = false
-left_analog_up = KEY_W
-left_analog_down = KEY_S
-left_analog_left = KEY_A
-left_analog_right = KEY_D
-right_analog_up = KEY_END
-right_analog_down = KEY_HOME
-right_analog_left = KEY_LEFT
-right_analog_right = KEY_RIGHT
+left_analog_up = w
+left_analog_down = s
+left_analog_left = a
+left_analog_right = d
+right_analog_up = end
+right_analog_down = home
+right_analog_left = left
+right_analog_right = right
 
 deadzone_y = 15000
 deadzone_x = 15000
@@ -77,6 +79,7 @@ deadzone_triggers = 3000
 fake_mouse_scale = 512
 fake_mouse_delay = 16
 ```
+####Key Repeat
 A simple keyboard key repeat function has been added that emulates automatic repeat of a keyboard key, once it has been held for at least an initial `delay`, at a regular `interval`. Key repeat works for one key at a time only (the first key that is pressed and held is repeated, and holding another key will not cause that to repeat, unless the first key is released). Key repeat has not been set up to work for analog triggers (L2/R2) at the moment.
 
 The default delay and interval are based on SDL1.2 standard and can be adjusted with `repeat_delay = ` and `repeat_interval = `
@@ -104,6 +107,36 @@ left_analog_right = right
 left_analog_right = repeat
 ```
 
+####Key Modifiers
+Sometimes key presses require a combination of `Alt`, `Ctrl` or `Shift` plus the key. These combinations can be specified by adding a separate line that indicates `add_alt`, `add_ctrl` or `add_shift` respectively. Modified keys can '''not''' be repeated at present. 
+
+The following example assigns `CTRL+X` to the `A` button.
+```
+a = x
+a = add_ctrl
+```
+
+####Hotkey + Button for additional Key Assignments
+An additional 8 keys can be assigned through Hotkey combinations for `a`, `b`, `x`, `y`, `l1`, `l2`, `r1`, `r2` buttons. Hotkey+button assignments are specified by adding `_hk` for the appropriate button (see default mappings below). The keys can use the same `Alt`, `Ctrl` or `Shift` modifiers by including a separate line that indicates `add_alt`, `add_ctrl` or `add_shift` respectively. 
+
+The following example assigns `ALT+F4` to the combination of `hotkey` plus `A` button.
+```
+a_hk = f4
+a_hk = add_alt
+```
+
+Default mappings are:
+```
+a_hk = enter
+b_hk = esc
+x_hk = c
+y_hk = a
+l1_hk = esc
+l2_hk = home
+r1_hk = enter
+r2_hk = end
+```
+
 ### Text Entry Options
 Text entry is possible, either by sending a preset (e.g. to enter your name to begin a game) or via an interactive input mode that's similar to entry of initials for a high score table 
 
@@ -118,20 +151,20 @@ export TEXTINPUTADDEXTRASYMBOLS="Y"    # enables additional symbols for interact
 Interactive input mode is also enabled by command line option `"textinput"`
 
 #### Preset Text Input
-Text Entry preset mode is enabled by `TEXTINPUTPRESET` environment variable whereby a name preset can be easily entered whenever a game displays a text prompt. When Text Entry is triggered with `HOTKEY+Y`, the preset text is entered as a series of key strokes.
+Text Entry preset mode is enabled by `TEXTINPUTPRESET` environment variable whereby a name preset can be easily entered whenever a game displays a text prompt. When Text Entry is triggered with `START+Y`, the preset text is entered as a series of key strokes.
 
-Text Entry preset mode also assigns `HOTKEY+A` to send `ENTER`.
+Text Entry preset mode also assigns `START+A` to send `ENTER`.
 
 CONTROLS
-`HOTKEY+Y` to send preset
-`HOTKEY+A` to send `ENTER`
+`START+Y` to send preset
+`START+A` to send `ENTER`
 
 #### Interactive Text Input
-Interactive Text Entry mode is enabled by launching GPtoKEYB with command line option `"textinput"` or by environment variable `TEXTINPUTINTERACTIVE="Y"` , and is triggered with `HOTKEY+X`. Once activated, Interactive Text Entry mode works similarly to entering initials for game highscores, with `D-PAD UP/DOWN` switching between letters for the currently selected character, `D-PAD RIGHT` moving to next character, `D-PAD LEFT` deleting and moving back one character, `SELECT/HOTKEY` cancelling interactive text entry, and `START` to confirm and exit interactive text entry. `A` sends `ENTER KEY` in interactive text entry mode.
+Interactive Text Entry mode is enabled by launching GPtoKEYB with command line option `"textinput"` or by environment variable `TEXTINPUTINTERACTIVE="Y"` , and is triggered with `START+X`. Once activated, Interactive Text Entry mode works similarly to entering initials for game highscores, with `D-PAD UP/DOWN` switching between letters for the currently selected character, `D-PAD RIGHT` moving to next character, `D-PAD LEFT` deleting and moving back one character, `SELECT/HOTKEY` cancelling interactive text entry, and `START` to confirm and exit interactive text entry. `A` sends `ENTER KEY` in interactive text entry mode and exits interactive text entry.
 
 ##### Interactive Input Mode Controls
 ```
-HOTKEY+X to activate
+START+X to activate
 once activated
 D-PAD UP = previous letter
 D-PAD DOWN = next letter
