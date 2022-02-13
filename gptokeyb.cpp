@@ -113,11 +113,14 @@ bool textinputinteractive_mode_active = false;
 bool textinputinteractive_noautocapitals = false;
 bool textinputinteractive_extrasymbols = false;
 bool app_exult_adjust = false;
-bool emitKeyPending = false; //check for hotkey trigger status before emitting key assigned to hotkey
-bool emitKeyPendingIsPressed = false; //check for hotkey trigger status before emitting key assigned to hotkey
-bool emitKeyPendingRepeat = false; //check for hotkey trigger status before setting key repeat for hotkey key
-bool emitKeyWasPending = false; //hotkey key will be emitted before trigger key is pressed, so keep track and backspace, if necessary
-int emitKeyPendingKeyToEmit; //check for hotkey trigger status before emitting this key
+bool emitKeyPending = false; //check for hotkey or start trigger status before emitting key assigned to hotkey or start
+bool emitKeyPendingIsPressed = false; //check for hotkey or start trigger status before emitting key assigned to hotkey or start
+bool emitKeyPendingRepeat = false; //check for hotkey or start trigger status before setting key repeat for hotkey key or start
+bool emitKeyWasPending = false; //hotkey or start key will be emitted before trigger key is pressed, so keep track and backspace, if necessary
+int emitKeyPendingKeyToEmit; //check for hotkey or start trigger status before emitting this key
+int emitKeyPendingModifier; 
+bool hotkey_button_combo_pressed = false; //if hotkey + button is pressed, keep track of button pressed to emit key-release when hotkey is released, in case hotkey is released before button is released
+int hotkey_button_combo_press_button;
 const int maxKeysNoExtendedSymbols = 69; //number of keys available for interactive text input
 const int maxKeysWithSymbols = 96; //number of keys available for interactive text input with extra symbols
 int maxKeys = maxKeysNoExtendedSymbols;
@@ -170,57 +173,98 @@ struct
 {
   short back = KEY_ESC;
   bool back_repeat = false;
+  short back_modifier = 0;
   short start = KEY_ENTER;
   bool start_repeat = false;
+  short start_modifier = 0;
   short guide = KEY_ENTER;
   bool guide_repeat = false;
+  short guide_modifier = 0;
   short a = KEY_X;
+  short a_hk = KEY_ENTER;
   bool a_repeat = false;
+  short a_modifier = 0;
+  short a_hk_modifier = 0;
   short b = KEY_Z;
+  short b_hk = KEY_ESC;
   bool b_repeat = false;
+  short b_modifier = 0;
+  short b_hk_modifier = 0;
   short x = KEY_C;
+  short x_hk = KEY_C;
   bool x_repeat = false;
+  short x_modifier = 0;
+  short x_hk_modifier = 0;
   short y = KEY_A;
+  short y_hk = KEY_A;
   bool y_repeat = false;
+  short y_modifier = 0;
+  short y_hk_modifier = 0;
   short l1 = KEY_RIGHTSHIFT;
+  short l1_hk = KEY_ESC;
   bool l1_repeat = false;
+  short l1_modifier = 0;
+  short l1_hk_modifier = 0;
   short l2 = KEY_HOME;
+  short l2_hk = KEY_HOME;
   bool l2_repeat = false;
+  short l2_modifier = 0;
+  short l2_hk_modifier = 0;
   short l3 = BTN_LEFT;
   bool l3_repeat = false;
+  short l3_modifier = 0;
   short r1 = KEY_LEFTSHIFT;
+  short r1_hk = KEY_ENTER;
   bool r1_repeat = false;
+  short r1_modifier = 0;
+  short r1_hk_modifier = 0;
   short r2 = KEY_END;
+  short r2_hk = KEY_END;
   bool r2_repeat = false;
+  short r2_modifier = 0;
+  short r2_hk_modifier = 0;
   short r3 = BTN_RIGHT;
   bool r3_repeat = false;
+  short r3_modifier = 0;
   short up = KEY_UP;
   bool up_repeat = false;
+  short up_modifier = 0;
   short down = KEY_DOWN;
   bool down_repeat = false;
+  short down_modifier = 0;
   short left = KEY_LEFT;
   bool left_repeat = false;
+  short left_modifier = 0;
   short right = KEY_RIGHT;
   bool right_repeat = false;
+  short right_modifier = 0;
 
   bool left_analog_as_mouse = false;
   bool right_analog_as_mouse = false;
   short left_analog_up = KEY_W;
   bool left_analog_up_repeat = false;
+  short left_analog_up_modifier = 0;
   short left_analog_down = KEY_S;
   bool left_analog_down_repeat = false;
+  short left_analog_down_modifier = 0;
   short left_analog_left = KEY_A;
   bool left_analog_left_repeat = false;
+  short left_analog_left_modifier = 0;
   short left_analog_right = KEY_D;
   bool left_analog_right_repeat = false;
+  short left_analog_right_modifier = 0;
   short right_analog_up = KEY_END;
   bool right_analog_up_repeat = false;
+  short right_analog_up_modifier = 0;
   short right_analog_down = KEY_HOME;
   bool right_analog_down_repeat = false;
+  short right_analog_down_modifier = 0;
   short right_analog_left = KEY_LEFT;
   bool right_analog_left_repeat = false;
+  short right_analog_left_modifier = 0;
   short right_analog_right = KEY_RIGHT;
   bool right_analog_right_repeat = false;
+  short right_analog_right_modifier = 0;
 
   int deadzone_y = 15000;
   int deadzone_x = 15000;
@@ -691,102 +735,284 @@ void readConfigFile(const char* config_file)
     if (strcmp(co.key, "back") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.back_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.back_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.back_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.back_modifier = KEY_LEFTSHIFT;
         } else {
             config.back = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "guide") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.guide_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.guide_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.guide_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.guide_modifier = KEY_LEFTSHIFT;
         } else {
             config.guide = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "start") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.start_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.start_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.start_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.start_modifier = KEY_LEFTSHIFT;
         } else {
             config.start = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "a") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.a_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.a_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.a_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.a_modifier = KEY_LEFTSHIFT;
         } else {
             config.a = char_to_keycode(co.value);
+        }
+    } else if (strcmp(co.key, "a_hk") == 0) {
+        if (strcmp(co.value, "add_alt") == 0) {
+            config.a_hk_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.a_hk_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.a_hk_modifier = KEY_LEFTSHIFT;
+        } else {
+            config.a_hk = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "b") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.b_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.b_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.b_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.b_modifier = KEY_LEFTSHIFT;
         } else {
             config.b = char_to_keycode(co.value);
+        }
+    } else if (strcmp(co.key, "b_hk") == 0) {
+        if (strcmp(co.value, "add_alt") == 0) {
+            config.b_hk_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.b_hk_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.b_hk_modifier = KEY_LEFTSHIFT;
+        } else {
+            config.b_hk = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "x") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.x_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.x_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.x_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.x_modifier = KEY_LEFTSHIFT;
         } else {
             config.x = char_to_keycode(co.value);
+        }
+    } else if (strcmp(co.key, "x_hk") == 0) {
+        if (strcmp(co.value, "add_alt") == 0) {
+            config.x_hk_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.x_hk_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.x_hk_modifier = KEY_LEFTSHIFT;
+        } else {
+            config.x_hk = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "y") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.y_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.y_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.y_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.y_modifier = KEY_LEFTSHIFT;
         } else {
             config.y = char_to_keycode(co.value);
+        }
+    } else if (strcmp(co.key, "y_hk") == 0) {
+        if (strcmp(co.value, "add_alt") == 0) {
+            config.y_hk_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.y_hk_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.y_hk_modifier = KEY_LEFTSHIFT;
+        } else {
+            config.y_hk = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "l1") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.l1_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.l1_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.l1_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.l1_modifier = KEY_LEFTSHIFT;
         } else {
             config.l1 = char_to_keycode(co.value);
+        }
+    } else if (strcmp(co.key, "l1_hk") == 0) {
+        if (strcmp(co.value, "add_alt") == 0) {
+            config.l1_hk_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.l1_hk_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.l1_hk_modifier = KEY_LEFTSHIFT;
+        } else {
+            config.l1_hk = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "l2") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.l2_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.l2_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.l2_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.l2_modifier = KEY_LEFTSHIFT;
         } else {
             config.l2 = char_to_keycode(co.value);
+        }
+    } else if (strcmp(co.key, "l2_hk") == 0) {
+        if (strcmp(co.value, "add_alt") == 0) {
+            config.l2_hk_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.l2_hk_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.l2_hk_modifier = KEY_LEFTSHIFT;
+        } else {
+            config.l2_hk = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "l3") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.l3_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.l3_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.l3_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.l3_modifier = KEY_LEFTSHIFT;
         } else {
             config.l3 = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "r1") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.r1_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.r1_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.r1_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.r1_modifier = KEY_LEFTSHIFT;
         } else {
             config.r1 = char_to_keycode(co.value);
+        }
+    } else if (strcmp(co.key, "r1_hk") == 0) {
+        if (strcmp(co.value, "add_alt") == 0) {
+            config.r1_hk_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.r1_hk_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.r1_hk_modifier = KEY_LEFTSHIFT;
+        } else {
+            config.r1_hk = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "r2") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.r2_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.r2_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.r2_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.r2_modifier = KEY_LEFTSHIFT;
         } else {
             config.r2 = char_to_keycode(co.value);
+        }
+    } else if (strcmp(co.key, "r2_hk") == 0) {
+        if (strcmp(co.value, "add_alt") == 0) {
+            config.r2_hk_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.r2_hk_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.r2_hk_modifier = KEY_LEFTSHIFT;
+        } else {
+            config.r2_hk = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "r3") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.r3_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.r3_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.r3_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.r3_modifier = KEY_LEFTSHIFT;
         } else {
             config.r3 = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "up") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.up_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.up_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.up_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.up_modifier = KEY_LEFTSHIFT;
         } else {
             config.up = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "down") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.down_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.down_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.down_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.down_modifier = KEY_LEFTSHIFT;
         } else {
             config.down = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "left") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.left_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.left_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.left_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.left_modifier = KEY_LEFTSHIFT;
         } else {
             config.left = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "right") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.right_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.right_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.right_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.right_modifier = KEY_LEFTSHIFT;
         } else {
             config.right = char_to_keycode(co.value);
         }
@@ -796,6 +1022,12 @@ void readConfigFile(const char* config_file)
       } else {
         if (strcmp(co.value, "repeat") == 0) {
             config.left_analog_up_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.left_analog_up_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.left_analog_up_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.left_analog_up_modifier = KEY_LEFTSHIFT;
         } else {
             config.left_analog_up = char_to_keycode(co.value);
         }
@@ -803,18 +1035,36 @@ void readConfigFile(const char* config_file)
     } else if (strcmp(co.key, "left_analog_down") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.left_analog_down_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.left_analog_down_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.left_analog_down_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.left_analog_down_modifier = KEY_LEFTSHIFT;
         } else {
             config.left_analog_down = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "left_analog_left") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.left_analog_left_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.left_analog_left_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.left_analog_left_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.left_analog_left_modifier = KEY_LEFTSHIFT;
         } else {
             config.left_analog_left = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "left_analog_right") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.left_analog_right_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.left_analog_right_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.left_analog_right_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.left_analog_right_modifier = KEY_LEFTSHIFT;
         } else {
             config.left_analog_right = char_to_keycode(co.value);
         }
@@ -824,6 +1074,12 @@ void readConfigFile(const char* config_file)
       } else {
         if (strcmp(co.value, "repeat") == 0) {
             config.right_analog_up_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.right_analog_up_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.right_analog_up_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.right_analog_up_modifier = KEY_LEFTSHIFT;
         } else {
             config.right_analog_up = char_to_keycode(co.value);
         }
@@ -831,18 +1087,36 @@ void readConfigFile(const char* config_file)
     } else if (strcmp(co.key, "right_analog_down") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.right_analog_down_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.right_analog_down_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.right_analog_down_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.right_analog_down_modifier = KEY_LEFTSHIFT;
         } else {
             config.right_analog_down = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "right_analog_left") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.right_analog_left_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.right_analog_left_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.right_analog_left_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.right_analog_left_modifier = KEY_LEFTSHIFT;
         } else {
             config.right_analog_left = char_to_keycode(co.value);
         }
     } else if (strcmp(co.key, "right_analog_right") == 0) {
         if (strcmp(co.value, "repeat") == 0) {
             config.right_analog_right_repeat = true;
+        } else if (strcmp(co.value, "add_alt") == 0) {
+            config.right_analog_right_modifier = KEY_LEFTALT;
+        } else if (strcmp(co.value, "add_ctrl") == 0) {
+            config.right_analog_right_modifier = KEY_LEFTCTRL;
+        } else if (strcmp(co.value, "add_shift") == 0) {
+            config.right_analog_right_modifier = KEY_LEFTSHIFT;
         } else {
             config.right_analog_right = char_to_keycode(co.value);
         }
@@ -901,10 +1175,18 @@ void emit(int type, int code, int val)
   write(uinp_fd, &ev, sizeof(ev));
 }
 
-void emitKey(int code, bool is_pressed)
+void emitKey(int code, bool is_pressed, int modifier = 0)
 {
+  if (!(modifier == 0) && is_pressed) {
+    emit(EV_KEY, modifier, is_pressed ? 1 : 0);
+    emit(EV_SYN, SYN_REPORT, 0);
+  }
   emit(EV_KEY, code, is_pressed ? 1 : 0);
   emit(EV_SYN, SYN_REPORT, 0);
+  if (!(modifier == 0) && !(is_pressed)) {
+    emit(EV_KEY, modifier, is_pressed ? 1 : 0);
+    emit(EV_SYN, SYN_REPORT, 0);
+  }
 }
 
 void emitTextInputKey(int code, bool uppercase)
@@ -1083,12 +1365,12 @@ void emitMouseMotion(int x, int y)
   }
 }
 
-void handleAnalogTrigger(bool is_triggered, bool& was_triggered, int key)
+void handleAnalogTrigger(bool is_triggered, bool& was_triggered, int key, int modifier=0)
 {
   if (is_triggered && !was_triggered) {
-    emitKey(key, true);
+    emitKey(key, true, modifier);
   } else if (!is_triggered && was_triggered) {
-    emitKey(key, false);
+    emitKey(key, false, modifier);
   }
 
   was_triggered = is_triggered;
@@ -1293,11 +1575,6 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_X:
-            if (textinputinteractive_mode) {
-                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
-                state.textinputinteractivetrigger_pressed = is_pressed;
-                if (state.hotkey_pressed && state.textinputinteractivetrigger_pressed) break; //hotkey combo triggered
-            }
             emitKey(BTN_X, is_pressed);
             break;
 
@@ -1345,7 +1622,7 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_START:
             emitKey(BTN_START, is_pressed);
-            if (kill_mode) {
+            if ((kill_mode) || (textinputpreset_mode) || (textinputinteractive_mode)) {
               state.start_jsdevice = event.cdevice.which;
               state.start_pressed = is_pressed;
             }
@@ -1391,7 +1668,7 @@ bool handleEvent(const SDL_Event& event)
              }
            } // sudo kill
         } //kill mode
-        else if ((textinputinteractive_mode) && (state.textinputinteractivetrigger_pressed && state.hotkey_pressed)) { //activate interactive text input mode
+        else if ((textinputinteractive_mode) && (state.textinputinteractivetrigger_pressed && state.start_pressed)) { //activate interactive text input mode
             printf("text input interactive pressed\n");
             if (state.hotkey_jsdevice == state.textinputinteractivetrigger_jsdevice) {
                 printf("text input interactive mode active\n");
@@ -1405,87 +1682,153 @@ bool handleEvent(const SDL_Event& event)
         } else { //config mode (i.e. not textinputinteractive_mode_active)
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
-            emitKey(config.left, is_pressed);
+            if (textinputpreset_mode) { //check if input preset mode is triggered
+                state.textinputpresettrigger_jsdevice = event.cdevice.which;
+                state.textinputpresettrigger_pressed = is_pressed;
+                if (state.start_pressed && state.textinputpresettrigger_pressed) break; //hotkey combo triggered
+            }
+            emitKey(config.left, is_pressed, config.left_modifier);
             if ((config.left_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.left))) {
                 setKeyRepeat(config.left, is_pressed);
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_UP:
-            emitKey(config.up, is_pressed); 
+            emitKey(config.up, is_pressed, config.up_modifier); 
             if ((config.up_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.up))){
                 setKeyRepeat(config.up, is_pressed);
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
-            emitKey(config.right, is_pressed);
+            if (textinputpreset_mode) { //check if input preset enter_press is triggered
+                state.textinputconfirmtrigger_jsdevice = event.cdevice.which;
+                state.textinputconfirmtrigger_pressed = is_pressed;
+                if (state.start_pressed && state.textinputconfirmtrigger_pressed) break; //hotkey combo triggered
+            }
+            emitKey(config.right, is_pressed, config.right_modifier);
             if ((config.right_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.right))){
                 setKeyRepeat(config.right, is_pressed);
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
-            emitKey(config.down, is_pressed);
+            if (textinputinteractive_mode) {
+                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
+                state.textinputinteractivetrigger_pressed = is_pressed;
+                if (state.start_pressed && state.textinputinteractivetrigger_pressed) break; //hotkey combo triggered
+            }
+            emitKey(config.down, is_pressed, config.down_modifier);
             if ((config.down_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.down))){
                 setKeyRepeat(config.down, is_pressed);
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_A:
-            if (textinputpreset_mode) { //check if input preset enter_press is triggered
-                state.textinputconfirmtrigger_jsdevice = event.cdevice.which;
-                state.textinputconfirmtrigger_pressed = is_pressed;
-                if (state.hotkey_pressed && state.textinputconfirmtrigger_pressed) break; //hotkey combo triggered
-            }
-            emitKey(config.a, is_pressed);
-            if ((config.a_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.a))){
-                setKeyRepeat(config.a, is_pressed);
+            if (state.hotkey_pressed) {
+              emitKey(config.a_hk, is_pressed, config.a_hk_modifier);
+              if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
+                hotkey_button_combo_pressed = true;
+                hotkey_button_combo_press_button = config.a_hk;
+              } else {
+                hotkey_button_combo_pressed = false;
+                hotkey_button_combo_press_button = 0;
+              }
+            } else {
+              emitKey(config.a, is_pressed, config.a_modifier);
+              if ((config.a_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.a))){
+                  setKeyRepeat(config.a, is_pressed);
+              }
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_B:
-            emitKey(config.b, is_pressed);
-            if ((config.b_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.b))){
-                setKeyRepeat(config.b, is_pressed);
+            if (state.hotkey_pressed) {
+              emitKey(config.b_hk, is_pressed, config.b_hk_modifier);
+              if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
+                hotkey_button_combo_pressed = true;
+                hotkey_button_combo_press_button = config.b_hk;
+              } else {
+                hotkey_button_combo_pressed = false;
+                hotkey_button_combo_press_button = 0;
+              }
+            } else {
+              emitKey(config.b, is_pressed, config.b_modifier);
+              if ((config.b_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.b))){
+                  setKeyRepeat(config.b, is_pressed);
+              }
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_X:
-            if (textinputinteractive_mode) {
-                state.textinputinteractivetrigger_jsdevice = event.cdevice.which;
-                state.textinputinteractivetrigger_pressed = is_pressed;
-                if (state.hotkey_pressed && state.textinputinteractivetrigger_pressed) break; //hotkey combo triggered
-            }
-            emitKey(config.x, is_pressed);
-            if ((config.x_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.x))){
-                setKeyRepeat(config.x, is_pressed);
+            if (state.hotkey_pressed) {
+              emitKey(config.x_hk, is_pressed, config.x_hk_modifier);
+              if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
+                hotkey_button_combo_pressed = true;
+                hotkey_button_combo_press_button = config.x_hk;
+              } else {
+                hotkey_button_combo_pressed = false;
+                hotkey_button_combo_press_button = 0;
+              }
+            } else {
+              emitKey(config.x, is_pressed, config.x_modifier);
+              if ((config.x_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.x))){
+                  setKeyRepeat(config.x, is_pressed);
+              }
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_Y:
-            if (textinputpreset_mode) { //check if input preset mode is triggered
-                state.textinputpresettrigger_jsdevice = event.cdevice.which;
-                state.textinputpresettrigger_pressed = is_pressed;
-                if (state.hotkey_pressed && state.textinputpresettrigger_pressed) break; //hotkey combo triggered
-            }
-            emitKey(config.y, is_pressed);
-            if ((config.y_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.y))){
-                setKeyRepeat(config.y, is_pressed);
+            if (state.hotkey_pressed) {
+              emitKey(config.y_hk, is_pressed, config.y_hk_modifier);
+              if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
+                hotkey_button_combo_pressed = true;
+                hotkey_button_combo_press_button = config.y_hk;
+              } else {
+                hotkey_button_combo_pressed = false;
+                hotkey_button_combo_press_button = 0;
+              }
+            } else {
+              emitKey(config.y, is_pressed, config.y_modifier);
+              if ((config.y_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.y))){
+                  setKeyRepeat(config.y, is_pressed);
+              }
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
-            emitKey(config.l1, is_pressed);
-            if ((config.l1_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l1))){
-                setKeyRepeat(config.l1, is_pressed);
+            if (state.hotkey_pressed) {
+              emitKey(config.l1_hk, is_pressed, config.l1_hk_modifier);
+              if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
+                hotkey_button_combo_pressed = true;
+                hotkey_button_combo_press_button = config.l1_hk;
+              } else {
+                hotkey_button_combo_pressed = false;
+                hotkey_button_combo_press_button = 0;
+              }
+            } else {
+              emitKey(config.l1, is_pressed, config.l1_modifier);
+              if ((config.l1_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l1))){
+                  setKeyRepeat(config.l1, is_pressed);
+              }
             }
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
-            emitKey(config.r1, is_pressed);
-            if ((config.r1_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.r1))){
-                setKeyRepeat(config.r1, is_pressed);
+            if (state.hotkey_pressed) {
+              emitKey(config.r1_hk, is_pressed, config.r1_hk_modifier);
+              if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
+                hotkey_button_combo_pressed = true;
+                hotkey_button_combo_press_button = config.r1_hk;
+              } else {
+                hotkey_button_combo_pressed = false;
+                hotkey_button_combo_press_button = 0;
+              }
+            } else {
+              emitKey(config.r1, is_pressed, config.r1_modifier);
+              if ((config.r1_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.r1))){
+                  setKeyRepeat(config.r1, is_pressed);
+              }
             }
             break;
 
@@ -1493,22 +1836,31 @@ bool handleEvent(const SDL_Event& event)
             if ((kill_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) || (textinputpreset_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0)) || (textinputinteractive_mode && hotkey_override && (strcmp(hotkey_code, "l3") == 0))) {
                 state.hotkey_jsdevice = event.cdevice.which;
                 state.hotkey_pressed = is_pressed;
+            } else if (hotkey_override && (strcmp(hotkey_code, "l3") == 0)) {
+                state.hotkey_jsdevice = event.cdevice.which;
+                state.hotkey_pressed = is_pressed;            
             }
             if (state.hotkey_pressed && (state.hotkey_jsdevice == event.cdevice.which)) {
-              emitKeyPending =  true;
+              emitKeyPending = true;
               emitKeyPendingKeyToEmit = config.l3;
+              emitKeyPendingModifier = config.l3_modifier;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.l3_repeat;
             } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
-              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
+              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               SDL_Delay(16);
-              emitKey(config.l3, is_pressed);
+              emitKey(config.l3, is_pressed, config.l3_modifier);
+              emitKeyPending = false;
+              emitKeyPendingKeyToEmit = 0;
+              emitKeyPendingModifier = 0;
+              emitKeyPendingIsPressed = is_pressed;
+              emitKeyPendingRepeat = 0;
               //note: hotkey cannot be assigned for key repeat; release key repeat for completeness
               if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
                 setKeyRepeat(config.l3, is_pressed);
               }
             } else {
-              emitKey(config.l3, is_pressed);            
+              emitKey(config.l3, is_pressed, config.l3_modifier);            
               if ((config.l3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.l3))){
                 setKeyRepeat(config.l3, is_pressed);
               }
@@ -1516,7 +1868,7 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
-            emitKey(config.r3, is_pressed);
+            emitKey(config.r3, is_pressed, config.r3_modifier);
             if ((config.r3_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.r3))){
                 setKeyRepeat(config.r3, is_pressed);
             }
@@ -1526,22 +1878,31 @@ bool handleEvent(const SDL_Event& event)
             if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "guide") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "guide") == 0)) || (textinputinteractive_mode && !(hotkey_override)) || (textinputinteractive_mode && (strcmp(hotkey_code, "guide") == 0))) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
+            } else if (!(hotkey_override)) {
+              state.hotkey_jsdevice = event.cdevice.which;
+              state.hotkey_pressed = is_pressed;
             }
             if (state.hotkey_pressed && (state.hotkey_jsdevice == event.cdevice.which)) {
-              emitKeyPending =  true;
+              emitKeyPending = true;
               emitKeyPendingKeyToEmit = config.guide;
+              emitKeyPendingModifier = config.guide_modifier;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.guide_repeat;
             } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
-              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
+              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               SDL_Delay(16);
-              emitKey(config.guide, is_pressed);
+              emitKey(config.guide, is_pressed, config.guide_modifier);
+              emitKeyPending = false;
+              emitKeyPendingKeyToEmit = 0;
+              emitKeyPendingModifier = 0;
+              emitKeyPendingIsPressed = is_pressed;
+              emitKeyPendingRepeat = 0;
               //note: hotkey cannot be assigned for key repeat; release key repeat for completeness
               if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
                 setKeyRepeat(config.guide, is_pressed);
                 }
             } else {
-              emitKey(config.guide, is_pressed);
+              emitKey(config.guide, is_pressed, config.guide_modifier);
               if ((config.guide_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.guide))){
                 setKeyRepeat(config.guide, is_pressed);
               }
@@ -1550,27 +1911,36 @@ bool handleEvent(const SDL_Event& event)
 
           case SDL_CONTROLLER_BUTTON_BACK: // aka select
             if (!emuelec_override) {
-            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0)) || (textinputpreset_mode && !(hotkey_override)) || (textinputpreset_mode && (strcmp(hotkey_code, "back") == 0)) || (textinputinteractive_mode && !(hotkey_override)) || (textinputinteractive_mode && (strcmp(hotkey_code, "back") == 0))) {
+            if ((kill_mode && !(hotkey_override)) || (kill_mode && hotkey_override && (strcmp(hotkey_code, "back") == 0))) {
+              state.hotkey_jsdevice = event.cdevice.which;
+              state.hotkey_pressed = is_pressed;
+            } else if (!(hotkey_override)) {
               state.hotkey_jsdevice = event.cdevice.which;
               state.hotkey_pressed = is_pressed;
             }
             }
             if (state.hotkey_pressed && (state.hotkey_jsdevice == event.cdevice.which)) {
-              emitKeyPending =  true;
+              emitKeyPending = true;
               emitKeyPendingKeyToEmit = config.back;
+              emitKeyPendingModifier = config.back_modifier;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.back_repeat;
             } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
-              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed);
+              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               SDL_Delay(16);
-              emitKey(config.back, is_pressed);
+              emitKey(config.back, is_pressed, config.back_modifier);
+              emitKeyPending = false;
+              emitKeyPendingKeyToEmit = 0;
+              emitKeyPendingModifier = 0;
+              emitKeyPendingIsPressed = is_pressed;
+              emitKeyPendingRepeat = 0;
               //note: hotkey cannot be assigned for key repeat; release key repeat for completeness
               if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
                 setKeyRepeat(config.back, is_pressed);
               }
           } //hotkey check prior to emitting key, to avoid conflicts with emitkey and hotkey press        
             else {
-              emitKey(config.back, is_pressed);
+              emitKey(config.back, is_pressed, config.back_modifier);
               if ((config.back_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.back))){
                 setKeyRepeat(config.back, is_pressed);
               }
@@ -1578,13 +1948,30 @@ bool handleEvent(const SDL_Event& event)
             break;
 
           case SDL_CONTROLLER_BUTTON_START:
-            emitKey(config.start, is_pressed);
-            if ((config.start_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.start))){
-                setKeyRepeat(config.start, is_pressed);
-            }
-            if (kill_mode) {
+            if ((kill_mode) || (textinputpreset_mode) || (textinputinteractive_mode)) {
                 state.start_jsdevice = event.cdevice.which;
                 state.start_pressed = is_pressed;
+            }
+            if (state.start_pressed && (state.start_jsdevice == event.cdevice.which)) {
+              emitKeyPending =  true;
+              emitKeyPendingKeyToEmit = config.start;
+              emitKeyPendingModifier = config.start_modifier;
+              emitKeyPendingIsPressed = is_pressed;
+              emitKeyPendingRepeat = config.start_repeat;
+            } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without start trigger so process key press then key release
+              emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
+              SDL_Delay(16);
+              emitKey(config.start, is_pressed, config.start_modifier);
+              //note: start cannot be assigned for key repeat; release key repeat for completeness
+              if ((config.start_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.start))){
+                setKeyRepeat(config.start, is_pressed);
+              }
+          } //hotkey check prior to emitting key, to avoid conflicts with emitkey and hotkey press        
+            else {
+              emitKey(config.start, is_pressed, config.start_modifier);
+              if ((config.start_repeat && is_pressed && (state.key_to_repeat == 0)) || (!(is_pressed) && (state.key_to_repeat == config.start))){
+                setKeyRepeat(config.start, is_pressed);
+              }
             }
             break;
         } //switch
@@ -1613,14 +2000,14 @@ bool handleEvent(const SDL_Event& event)
              }
            } // sudo kill
         } //kill mode 
-        else if ((textinputpreset_mode) && (state.textinputpresettrigger_pressed && state.hotkey_pressed)) { //activate input preset mode - send predefined text as a series of keystrokes
+        else if ((textinputpreset_mode) && (state.textinputpresettrigger_pressed && state.start_pressed)) { //activate input preset mode - send predefined text as a series of keystrokes
             printf("text input preset pressed\n");
             if (emitKeyWasPending) {
-              emitKey(emitKeyPendingKeyToEmit, false); // release hotkey key_press
-              removeTextInputCharacter(); //delete key emitted when hotkey was pressed
+              emitKey(emitKeyPendingKeyToEmit, false, emitKeyPendingModifier); // release start key_press
+              removeTextInputCharacter(); //delete key emitted when start was pressed
               emitKeyWasPending = false;
             }
-            if (state.hotkey_jsdevice == state.textinputpresettrigger_jsdevice) {
+            if (state.start_jsdevice == state.textinputpresettrigger_jsdevice) {
                 if (config.text_input_preset != NULL) {
                     printf("text input processing %s\n", config.text_input_preset);
                     processKeys();
@@ -1628,32 +2015,31 @@ bool handleEvent(const SDL_Event& event)
             }
  
          } //input preset trigger mode (i.e. not kill mode)
-        else if ((textinputpreset_mode) && (state.textinputconfirmtrigger_pressed && state.hotkey_pressed)) { //activate input preset confirm mode - send ENTER key
+        else if ((textinputpreset_mode) && (state.textinputconfirmtrigger_pressed && state.start_pressed)) { //activate input preset confirm mode - send ENTER key
             printf("text input confirm pressed\n");
             if (emitKeyWasPending) {
-              emitKey(emitKeyPendingKeyToEmit, false); // release hotkey key_press
+              emitKey(emitKeyPendingKeyToEmit, false, emitKeyPendingModifier); // release hotkey key_press
               removeTextInputCharacter(); //delete key emitted when hotkey was pressed
               emitKeyWasPending = false;
             }
-            if (state.hotkey_jsdevice == state.textinputconfirmtrigger_jsdevice) {
+            if (state.start_jsdevice == state.textinputconfirmtrigger_jsdevice) {
                 printf("text input Enter key\n");
                 emitKey(char_to_keycode("enter"), true);
                 SDL_Delay(15);
                 emitKey(char_to_keycode("enter"), false);
             }
           } //input confirm trigger mode (i.e. not kill mode)         
-        else if ((textinputinteractive_mode) && (state.textinputinteractivetrigger_pressed && state.hotkey_pressed)) { //activate interactive text input mode
+        else if ((textinputinteractive_mode) && (state.textinputinteractivetrigger_pressed && state.start_pressed)) { //activate interactive text input mode
             printf("text input interactive pressed\n");
             if (emitKeyWasPending) {
-              emitKey(emitKeyPendingKeyToEmit, false); // release hotkey key_press
-              removeTextInputCharacter(); //delete key emitted when hotkey was pressed
+              emitKey(emitKeyPendingKeyToEmit, false, emitKeyPendingModifier); // release start key_press
+              removeTextInputCharacter(); //delete key emitted when start was pressed
               emitKeyWasPending = false;
             }
-            if (state.hotkey_jsdevice == state.textinputinteractivetrigger_jsdevice) {
+            if (state.start_jsdevice == state.textinputinteractivetrigger_jsdevice) {
                 printf("text input interactive mode active\n");
                 textinputinteractive_mode_active = true;
                 SDL_RemoveTimer( state.key_repeat_timer_id ); // disable any active key repeat timer
-                if (hotkey_override && (strcmp(hotkey_code, "l3") == 0)) emitKey(config.l3, false); // release l3 hotkey key_press
                 current_character = 0;
 
                 addTextInputCharacter();
@@ -1744,7 +2130,8 @@ bool handleEvent(const SDL_Event& event)
             handleAnalogTrigger(
               state.current_left_analog_y < 0,
               state.left_analog_was_up,
-              config.left_analog_up);
+              config.left_analog_up,
+              config.left_analog_up_modifier);
             if ((state.current_left_analog_y < 0 ) && config.left_analog_up_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.left_analog_up, true);
             } else if ((state.current_left_analog_y == 0 ) && config.left_analog_up_repeat && (state.key_to_repeat == config.left_analog_up)) {
@@ -1754,7 +2141,8 @@ bool handleEvent(const SDL_Event& event)
             handleAnalogTrigger(
               state.current_left_analog_y > 0,
               state.left_analog_was_down,
-              config.left_analog_down);
+              config.left_analog_down,
+              config.left_analog_down_modifier);
             if ((state.current_left_analog_y > 0 ) && config.left_analog_down_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.left_analog_down, true);
             } else if ((state.current_left_analog_y == 0 ) && config.left_analog_down_repeat && (state.key_to_repeat == config.left_analog_down)) {
@@ -1764,7 +2152,8 @@ bool handleEvent(const SDL_Event& event)
             handleAnalogTrigger(
               state.current_left_analog_x < 0,
               state.left_analog_was_left,
-              config.left_analog_left);
+              config.left_analog_left,
+              config.left_analog_left_modifier);
             if ((state.current_left_analog_x < 0 ) && config.left_analog_left_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.left_analog_left, true);
             } else if ((state.current_left_analog_x == 0 ) && config.left_analog_left_repeat && (state.key_to_repeat == config.left_analog_left)) {
@@ -1774,7 +2163,8 @@ bool handleEvent(const SDL_Event& event)
             handleAnalogTrigger(
               state.current_left_analog_x > 0,
               state.left_analog_was_right,
-              config.left_analog_right);
+              config.left_analog_right,
+              config.left_analog_right_modifier);
             if ((state.current_left_analog_x > 0 ) && config.left_analog_right_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.left_analog_right, true);
             } else if ((state.current_left_analog_x == 0 ) && config.left_analog_right_repeat && (state.key_to_repeat == config.left_analog_right)) {
@@ -1784,7 +2174,8 @@ bool handleEvent(const SDL_Event& event)
             handleAnalogTrigger(
               state.current_right_analog_y < 0,
               state.right_analog_was_up,
-              config.right_analog_up);
+              config.right_analog_up,
+              config.right_analog_up_modifier);
             if ((state.current_right_analog_y < 0 ) && config.right_analog_up_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.right_analog_up, true);
             } else if ((state.current_right_analog_y == 0 ) && config.right_analog_up_repeat && (state.key_to_repeat == config.right_analog_up)) {
@@ -1794,7 +2185,8 @@ bool handleEvent(const SDL_Event& event)
             handleAnalogTrigger(
               state.current_right_analog_y > 0,
               state.right_analog_was_down,
-              config.right_analog_down);
+              config.right_analog_down,
+              config.right_analog_down_modifier);
             if ((state.current_right_analog_y > 0 ) && config.right_analog_down_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.right_analog_down, true);
             } else if ((state.current_right_analog_y == 0 ) && config.right_analog_down_repeat && (state.key_to_repeat == config.right_analog_down)) {
@@ -1804,7 +2196,8 @@ bool handleEvent(const SDL_Event& event)
             handleAnalogTrigger(
               state.current_right_analog_x < 0,
               state.right_analog_was_left,
-              config.right_analog_left);
+              config.right_analog_left,
+              config.right_analog_left_modifier);
             if ((state.current_right_analog_x < 0 ) && config.right_analog_left_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.right_analog_left, true);
             } else if ((state.current_right_analog_x == 0 ) && config.right_analog_left_repeat && (state.key_to_repeat == config.right_analog_left)) {
@@ -1814,7 +2207,8 @@ bool handleEvent(const SDL_Event& event)
             handleAnalogTrigger(
               state.current_right_analog_x > 0,
               state.right_analog_was_right,
-              config.right_analog_right);
+              config.right_analog_right,
+              config.right_analog_right_modifier);
             if ((state.current_right_analog_x > 0 ) && config.right_analog_right_repeat && (state.key_to_repeat == 0)) {
                 setKeyRepeat(config.right_analog_right, true);
             } else if ((state.current_right_analog_x == 0 ) && config.right_analog_right_repeat && (state.key_to_repeat == config.right_analog_right)) {
@@ -1826,11 +2220,13 @@ bool handleEvent(const SDL_Event& event)
         handleAnalogTrigger(
           state.current_l2 > config.deadzone_triggers,
           state.l2_was_pressed,
-          config.l2);
+          config.l2,
+          config.l2_modifier);
         handleAnalogTrigger(
           state.current_r2 > config.deadzone_triggers,
           state.r2_was_pressed,
-          config.r2);
+          config.r2,
+          config.r2_modifier);
       } // end of else for indicating which axis was moved before checking whether it's assigned as mouse
       break;
     case SDL_CONTROLLERDEVICEADDED:
