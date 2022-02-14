@@ -105,6 +105,7 @@ struct uinput_user_dev uidev;
 
 bool kill_mode = false;
 bool sudo_kill = false; //allow sudo kill instead of killall for non-emuelec systems
+bool pckill_mode = false; //allow alt+f4 for pc closing apps on pc
 bool openbor_mode = false;
 bool xbox360_mode = false;
 bool textinputpreset_mode = false; 
@@ -1866,12 +1867,14 @@ bool handleEvent(const SDL_Event& event)
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.l3_repeat;
             } else if (emitKeyPending && !(is_pressed) && state.hk_combo_was_pressed) { //hotkey combo was pressed; ignore hotkey key press
+              printf("hotkey combo released, don't emit key\n");
               emitKeyPending = false;
               emitKeyPendingKeyToEmit = 0;
               emitKeyPendingModifier = 0;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = 0;
             } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
+              printf("l3 released, emit key %i %i %i\n",emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               SDL_Delay(16);
               emitKey(config.l3, is_pressed, config.l3_modifier);
@@ -1914,12 +1917,14 @@ bool handleEvent(const SDL_Event& event)
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.guide_repeat;
             } else if (emitKeyPending && !(is_pressed) && state.hk_combo_was_pressed) { //hotkey combo was pressed; ignore hotkey key press
+              printf("hotkey combo released, don't emit key\n");
               emitKeyPending = false;
               emitKeyPendingKeyToEmit = 0;
               emitKeyPendingModifier = 0;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = 0;
             } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
+              printf("guide released, emit key %i %i %i\n", emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               SDL_Delay(16);
               emitKey(config.guide, is_pressed, config.guide_modifier);
@@ -1957,12 +1962,14 @@ bool handleEvent(const SDL_Event& event)
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.back_repeat;
             } else if (emitKeyPending && !(is_pressed) && state.hk_combo_was_pressed) { //hotkey combo was pressed; ignore hotkey key press
+              printf("hotkey combo released, don't emit key\n");
               emitKeyPending = false;
               emitKeyPendingKeyToEmit = 0;
               emitKeyPendingModifier = 0;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = 0;
             } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
+              printf("back released, emit key %i %i %i\n", emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               SDL_Delay(16);
               emitKey(config.back, is_pressed, config.back_modifier);
@@ -2036,6 +2043,11 @@ bool handleEvent(const SDL_Event& event)
                exit(0);
              }
            } // sudo kill
+          if (pckill_mode) {
+            emitKey(KEY_F4,true,KEY_LEFTALT);
+            SDL_Delay(15);
+            emitKey(KEY_F4,false,KEY_LEFTALT);
+          }
         } //kill mode 
         else if ((textinputpreset_mode) && (state.textinputpresettrigger_pressed && state.start_pressed)) { //activate input preset mode - send predefined text as a series of keystrokes
             printf("text input preset pressed\n");
@@ -2257,26 +2269,26 @@ bool handleEvent(const SDL_Event& event)
         if (state.hotkey_pressed) {
           handleAnalogTrigger(
             state.current_l2 > config.deadzone_triggers,
-            state.l2_was_pressed,
+            state.l2_hk_was_pressed,
             config.l2_hk,
             config.l2_hk_modifier);
           handleAnalogTrigger(
             state.current_r2 > config.deadzone_triggers,
-            state.r2_was_pressed,
+            state.r2_hk_was_pressed,
             config.r2_hk,
             config.r2_hk_modifier);
+          if (state.l2_hk_was_pressed || state.r2_hk_was_pressed) state.hk_combo_was_pressed = true;
         } else if (state.l2_hk_was_pressed || state.r2_hk_was_pressed) {
           handleAnalogTrigger(
             state.current_l2 > config.deadzone_triggers,
-            state.l2_was_pressed,
+            state.l2_hk_was_pressed,
             config.l2_hk,
             config.l2_hk_modifier);
           handleAnalogTrigger(
             state.current_r2 > config.deadzone_triggers,
-            state.r2_was_pressed,
+            state.r2_hk_was_pressed,
             config.r2_hk,
             config.r2_hk_modifier);
-          state.hk_combo_was_pressed = true;
         } else {
           handleAnalogTrigger(
             state.current_l2 > config.deadzone_triggers,
@@ -2349,6 +2361,13 @@ int main(int argc, char* argv[])
     if (strcmp(env_textinput_interactive,"Y") == 0) {
       textinputinteractive_mode = true;
       textinputinteractive_mode_active = false;
+    }
+  }
+
+  // Add pc alt+f4 exit environment variable if available
+  if (char* env_pckill_mode = SDL_getenv("PCKILLMODE")) {
+    if (strcmp(env_pckill_mode,"Y") == 0) {
+      pckill_mode = true;
     }
   }
 
