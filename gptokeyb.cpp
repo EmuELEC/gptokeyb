@@ -171,6 +171,7 @@ struct
   bool l2_hk_was_pressed = false;
   bool r2_was_pressed = false;
   bool r2_hk_was_pressed = false;
+  bool hk_combo_was_pressed = false; //keep track of whether a hotkey combo was pressed; if so, don't send hotkey key when hotkey is released
   short key_to_repeat = 0;
   SDL_TimerID key_repeat_timer_id = 0;
 } state;
@@ -1735,6 +1736,7 @@ bool handleEvent(const SDL_Event& event)
               emitKey(config.a_hk, is_pressed, config.a_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
                 state.a_hk_was_pressed = true;
+                state.hk_combo_was_pressed = true;
               } else {
                 state.a_hk_was_pressed = false;
               }
@@ -1754,6 +1756,7 @@ bool handleEvent(const SDL_Event& event)
               emitKey(config.b_hk, is_pressed, config.b_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
                 state.b_hk_was_pressed = true;
+                state.hk_combo_was_pressed = true;
               } else {
                 state.b_hk_was_pressed = false;
               }
@@ -1773,6 +1776,7 @@ bool handleEvent(const SDL_Event& event)
               emitKey(config.x_hk, is_pressed, config.x_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
                 state.x_hk_was_pressed = true;
+                state.hk_combo_was_pressed = true;
               } else {
                 state.x_hk_was_pressed = false;
               }
@@ -1792,6 +1796,7 @@ bool handleEvent(const SDL_Event& event)
               emitKey(config.y_hk, is_pressed, config.y_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
                 state.y_hk_was_pressed = true;
+                state.hk_combo_was_pressed = true;
               } else {
                 state.y_hk_was_pressed = false;
               }
@@ -1811,6 +1816,7 @@ bool handleEvent(const SDL_Event& event)
               emitKey(config.l1_hk, is_pressed, config.l1_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
                 state.l1_hk_was_pressed = true;
+                state.hk_combo_was_pressed = true;
               } else {
                 state.l1_hk_was_pressed = false;
               }
@@ -1830,6 +1836,7 @@ bool handleEvent(const SDL_Event& event)
               emitKey(config.r1_hk, is_pressed, config.r1_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
                 state.r1_hk_was_pressed = true;
+                state.hk_combo_was_pressed = true;
               } else {
                 state.r1_hk_was_pressed = false;
               }
@@ -1858,6 +1865,12 @@ bool handleEvent(const SDL_Event& event)
               emitKeyPendingModifier = config.l3_modifier;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.l3_repeat;
+            } else if (emitKeyPending && !(is_pressed) && state.hk_combo_was_pressed) { //hotkey combo was pressed; ignore hotkey key press
+              emitKeyPending = false;
+              emitKeyPendingKeyToEmit = 0;
+              emitKeyPendingModifier = 0;
+              emitKeyPendingIsPressed = is_pressed;
+              emitKeyPendingRepeat = 0;
             } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
               emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               SDL_Delay(16);
@@ -1900,6 +1913,12 @@ bool handleEvent(const SDL_Event& event)
               emitKeyPendingModifier = config.guide_modifier;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.guide_repeat;
+            } else if (emitKeyPending && !(is_pressed) && state.hk_combo_was_pressed) { //hotkey combo was pressed; ignore hotkey key press
+              emitKeyPending = false;
+              emitKeyPendingKeyToEmit = 0;
+              emitKeyPendingModifier = 0;
+              emitKeyPendingIsPressed = is_pressed;
+              emitKeyPendingRepeat = 0;
             } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
               emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               SDL_Delay(16);
@@ -1937,6 +1956,12 @@ bool handleEvent(const SDL_Event& event)
               emitKeyPendingModifier = config.back_modifier;
               emitKeyPendingIsPressed = is_pressed;
               emitKeyPendingRepeat = config.back_repeat;
+            } else if (emitKeyPending && !(is_pressed) && state.hk_combo_was_pressed) { //hotkey combo was pressed; ignore hotkey key press
+              emitKeyPending = false;
+              emitKeyPendingKeyToEmit = 0;
+              emitKeyPendingModifier = 0;
+              emitKeyPendingIsPressed = is_pressed;
+              emitKeyPendingRepeat = 0;
             } else if (emitKeyPending && !(is_pressed)) { //key pressed and now released without hotkey trigger so process key press then key release
               emitKey(emitKeyPendingKeyToEmit, emitKeyPendingIsPressed, emitKeyPendingModifier);
               SDL_Delay(16);
@@ -2251,6 +2276,7 @@ bool handleEvent(const SDL_Event& event)
             state.r2_was_pressed,
             config.r2_hk,
             config.r2_hk_modifier);
+          state.hk_combo_was_pressed = true;
         } else {
           handleAnalogTrigger(
             state.current_l2 > config.deadzone_triggers,
