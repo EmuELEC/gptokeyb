@@ -22,6 +22,8 @@ gptokeyb provides a kill switch for an application and mapping of gamepad button
 
 `export TEXTINPUT="my name"` assigns text as preset for input so that `my name` is automatically entered, once triggered
 
+`export PCKILLMODE="Y"` indicates that `ALT+F4` should be sent to close the app before kill mode is processed, which can be used on Linux pcs
+
 ### Command Line Options
 `xbox360` selects xbox360 joystick mode
 
