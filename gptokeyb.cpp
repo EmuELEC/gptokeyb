@@ -1653,6 +1653,11 @@ bool handleEvent(const SDL_Event& event)
             break;
         }
          if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {      
+          if (pckill_mode) {
+            emitKey(KEY_F4,true,KEY_LEFTALT);
+            SDL_Delay(15);
+            emitKey(KEY_F4,false,KEY_LEFTALT);
+          }
           if (! sudo_kill) {
              // printf("Killing: %s\n", AppToKill);
              if (state.start_jsdevice == state.hotkey_jsdevice) {
@@ -2020,6 +2025,11 @@ bool handleEvent(const SDL_Event& event)
             break;
         } //switch
         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {
+          if (pckill_mode) {
+            emitKey(KEY_F4,true,KEY_LEFTALT);
+            SDL_Delay(15);
+            emitKey(KEY_F4,false,KEY_LEFTALT);
+          }
           SDL_RemoveTimer( state.key_repeat_timer_id );
           if (! sudo_kill) {
              // printf("Killing: %s\n", AppToKill);
@@ -2043,11 +2053,6 @@ bool handleEvent(const SDL_Event& event)
                exit(0);
              }
            } // sudo kill
-          if (pckill_mode) {
-            emitKey(KEY_F4,true,KEY_LEFTALT);
-            SDL_Delay(15);
-            emitKey(KEY_F4,false,KEY_LEFTALT);
-          }
         } //kill mode 
         else if ((textinputpreset_mode) && (state.textinputpresettrigger_pressed && state.start_pressed)) { //activate input preset mode - send predefined text as a series of keystrokes
             printf("text input preset pressed\n");
