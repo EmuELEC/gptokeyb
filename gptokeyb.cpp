@@ -45,7 +45,9 @@
 #include <libevdev-1.0/libevdev/libevdev-uinput.h>
 #include <libevdev-1.0/libevdev/libevdev.h>
 
+
 #include <fcntl.h>
+#include <iostream>
 #include <sstream>
 #include <string.h>
 #include <unistd.h>
@@ -1646,13 +1648,13 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
              if (state.start_jsdevice == state.hotkey_jsdevice) {
                 char buffer[128];
                 sprintf(buffer, "killall -%d '%s' ", kill_signal, AppToKill);
+                std::cout << buffer << std::endl;
                 system(buffer);
                 exit(0); 
              }
           } else {
              if (state.start_jsdevice == state.hotkey_jsdevice) {
                system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
-               sleep(3);
                exit(0);
              }
            } // sudo kill
@@ -1971,13 +1973,13 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
              if (state.start_jsdevice == state.hotkey_jsdevice) {
                 char buffer[128];
                 sprintf(buffer, "killall -%d '%s' ", kill_signal, AppToKill);
+                std::cout << buffer << std::endl;
                 system(buffer);
-                exit(0); 
+                exit(0);
              }
           } else {
              if (state.start_jsdevice == state.hotkey_jsdevice) {
                system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
-               sleep(3);
                exit(0);
              }
            } // sudo kill
