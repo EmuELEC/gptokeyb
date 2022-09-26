@@ -2345,7 +2345,6 @@ int main(int argc, char* argv[])
           kill_mode = true;
           kill_signal = atoi(argv[++ii]);
         }
-      }
     } 
   }
 
