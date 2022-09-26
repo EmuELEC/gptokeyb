@@ -2339,7 +2339,8 @@ int main(int argc, char* argv[])
         if (strcmp(AppToKill, "exult") == 0) { // special adjustment for Exult, which adds double spaces during text input
           app_exult_adjust = true;
         }
-      } else if ((strcmp(argv[ii], "-killsignal") == 0)) {
+      } 
+    } else if (strcmp(argv[ii], "-killsignal") == 0) {
         if (ii + 1 < argc) { 
           kill_mode = true;
           kill_signal = atoi(argv[++ii]);
