@@ -2345,7 +2345,8 @@ int main(int argc, char* argv[])
           kill_mode = true;
           kill_signal = atoi(argv[++ii]);
         }
-    } 
+        std::cout << "kill_signal: " << kill_signal << std::endl;
+    }
   }
 
   // Add textinput_interactive mode, check for extra options via environment variable if available
