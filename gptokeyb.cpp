@@ -45,7 +45,9 @@
 #include <libevdev-1.0/libevdev/libevdev-uinput.h>
 #include <libevdev-1.0/libevdev/libevdev.h>
 
+
 #include <fcntl.h>
+#include <iostream>
 #include <sstream>
 #include <string.h>
 #include <unistd.h>
@@ -103,6 +105,7 @@ std::vector<config_option> parseConfigFile(const char* path)
 static int uinp_fd = -1;
 struct uinput_user_dev uidev;
 
+int kill_signal = 15;
 bool kill_mode = false;
 bool sudo_kill = false; //allow sudo kill instead of killall for non-emuelec systems
 bool pckill_mode = false; //emit alt+f4 to close apps on pc during kill mode, if env variable is set
@@ -1643,22 +1646,15 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
           if (! sudo_kill) {
              // printf("Killing: %s\n", AppToKill);
              if (state.start_jsdevice == state.hotkey_jsdevice) {
-                system((" killall  '" + std::string(AppToKill) + "' ").c_str());
-                system("show_splash.sh exit");
-               sleep(3);
-               if (
-                 system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) ==
-                 0) {
-                 printf("Forcefully Killing: %s\n", AppToKill);
-                 system(
-                   (" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
-               }
-            exit(0); 
-            }             
+                char buffer[128];
+                sprintf(buffer, "killall -%d '%s' ", kill_signal, AppToKill);
+                std::cout << buffer << std::endl;
+                system(buffer);
+                exit(0); 
+             }
           } else {
              if (state.start_jsdevice == state.hotkey_jsdevice) {
-                system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
-               sleep(3);
+               system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
                exit(0);
              }
            } // sudo kill
@@ -1975,22 +1971,15 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
           if (! sudo_kill) {
              // printf("Killing: %s\n", AppToKill);
              if (state.start_jsdevice == state.hotkey_jsdevice) {
-                system((" killall  '" + std::string(AppToKill) + "' ").c_str());
-                system("show_splash.sh exit");
-               sleep(3);
-               if (
-                 system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) ==
-                 0) {
-                 printf("Forcefully Killing: %s\n", AppToKill);
-                 system(
-                   (" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
-               }
-            exit(0); 
-            }   
+                char buffer[128];
+                sprintf(buffer, "killall -%d '%s' ", kill_signal, AppToKill);
+                std::cout << buffer << std::endl;
+                system(buffer);
+                exit(0);
+             }
           } else {
              if (state.start_jsdevice == state.hotkey_jsdevice) {
-                system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
-               sleep(3);
+               system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
                exit(0);
              }
            } // sudo kill
@@ -2350,9 +2339,14 @@ int main(int argc, char* argv[])
         if (strcmp(AppToKill, "exult") == 0) { // special adjustment for Exult, which adds double spaces during text input
           app_exult_adjust = true;
         }
-      }
-      
-    } 
+      } 
+    } else if (strcmp(argv[ii], "-killsignal") == 0) {
+        if (ii + 1 < argc) { 
+          kill_mode = true;
+          kill_signal = atoi(argv[++ii]);
+        }
+        std::cout << "kill_signal: " << kill_signal << std::endl;
+    }
   }
 
   // Add textinput_interactive mode, check for extra options via environment variable if available
