@@ -1655,7 +1655,6 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
                     printf("Forcefully Killing: %s\n", AppToKill);
                     system((" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
                 }
-                system("show_splash.sh exit");                
                 exit(0);
              }
           } else {
@@ -1987,7 +1986,6 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
                     printf("Forcefully Killing: %s\n", AppToKill);
                     system((" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
                 }
-                system("show_splash.sh exit");                
                 exit(0);
              }
           } else {
