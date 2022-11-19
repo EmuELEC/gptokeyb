@@ -1650,11 +1650,18 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
                 sprintf(buffer, "killall -%d '%s' ", kill_signal, AppToKill);
                 std::cout << buffer << std::endl;
                 system(buffer);
-                exit(0); 
+                sleep(3);
+                if (system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) == 0) {
+                    printf("Forcefully Killing: %s\n", AppToKill);
+                    system((" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
+                }
+                system("show_splash.sh exit");                
+                exit(0);
              }
           } else {
              if (state.start_jsdevice == state.hotkey_jsdevice) {
                system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
+               sleep(3);
                exit(0);
              }
            } // sudo kill
@@ -1975,11 +1982,18 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
                 sprintf(buffer, "killall -%d '%s' ", kill_signal, AppToKill);
                 std::cout << buffer << std::endl;
                 system(buffer);
+                sleep(3);
+                if (system((" pgrep '" + std::string(AppToKill) + "' ").c_str()) == 0) {
+                    printf("Forcefully Killing: %s\n", AppToKill);
+                    system((" killall  -9 '" + std::string(AppToKill) + "' ").c_str());
+                }
+                system("show_splash.sh exit");                
                 exit(0);
              }
           } else {
              if (state.start_jsdevice == state.hotkey_jsdevice) {
                system((" kill -9 $(pidof '" + std::string(AppToKill) + "') ").c_str());
+               sleep(3);
                exit(0);
              }
            } // sudo kill
