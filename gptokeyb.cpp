@@ -108,6 +108,7 @@ struct uinput_user_dev uidev;
 int kill_signal = 15;
 bool kill_mode = false;
 bool sudo_kill = false; //allow sudo kill instead of killall for non-emuelec systems
+bool is_btntokeyb = false; // allow hotkey+key to simulate keyboard press
 bool pckill_mode = false; //emit alt+f4 to close apps on pc during kill mode, if env variable is set
 bool openbor_mode = false;
 bool xbox360_mode = false;
@@ -129,6 +130,8 @@ char* AppToKill;
 bool config_mode = false;
 bool hotkey_override = false;
 char* hotkey_code;
+char* btntokeyb_btn;
+char* btntokeyb_keyb;
 
 struct
 {
@@ -145,6 +148,14 @@ struct
   int current_right_analog_y = 0;
   int current_l2 = 0;
   int current_r2 = 0;
+
+  bool a_was_pressed = false;
+  bool b_was_pressed = false;
+  bool x_was_pressed = false;
+  bool y_was_pressed = false;
+  bool l1_was_pressed = false;
+  bool r1_was_pressed = false;
+
   bool hotkey_pressed = false; // current state of hotkey
   bool hotkey_was_pressed = false; // indicates hotkey button has been pressed, and key may need to be processed on button's release, if hotkey combo isn't triggered
   bool start_pressed = false;
@@ -1414,26 +1425,32 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
         // Fake Xbox360 mode
         switch (event.cbutton.button) {
           case SDL_CONTROLLER_BUTTON_A:
+            state.a_was_pressed = is_pressed;
             emitKey(BTN_A, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_B:
+            state.b_was_pressed = is_pressed;
             emitKey(BTN_B, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_X:
+            state.x_was_pressed = is_pressed;
             emitKey(BTN_X, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_Y:
+            state.y_was_pressed = is_pressed;
             emitKey(BTN_Y, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+            state.l1_was_pressed = is_pressed;
             emitKey(BTN_TL, is_pressed);
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+            state.r1_was_pressed = is_pressed;
             emitKey(BTN_TR, is_pressed);
             break;
 
@@ -1491,6 +1508,25 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
             emitAxisMotion(ABS_HAT0X, is_pressed ? 1 : 0);
             break;
         }
+
+        if (is_btntokeyb && state.hotkey_pressed) {
+          if (
+            (state.a_was_pressed && strcmp(btntokeyb_btn,"a")==0) ||
+            (state.b_was_pressed && strcmp(btntokeyb_btn,"b")==0) ||
+            (state.x_was_pressed && strcmp(btntokeyb_btn,"x")==0) ||
+            (state.y_was_pressed && strcmp(btntokeyb_btn,"y")==0) ||
+            (state.l1_was_pressed && strcmp(btntokeyb_btn,"l1")==0) ||
+            (state.l2_was_pressed && strcmp(btntokeyb_btn,"l2")==0) ||
+            (state.r1_was_pressed && strcmp(btntokeyb_btn,"r1")==0) ||
+            (state.r2_was_pressed && strcmp(btntokeyb_btn,"r2")==0))
+          {
+            std::cout << "emitKey: " << btntokeyb_btn << " " << btntokeyb_keyb << std::endl;
+            emitKey(char_to_keycode(btntokeyb_keyb),true,0);
+            SDL_Delay(15);
+            emitKey(char_to_keycode(btntokeyb_keyb),false,0);
+          }
+        }
+
          if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {      
           if (pckill_mode) {
             emitKey(KEY_F4,true,KEY_LEFTALT);
@@ -1566,6 +1602,7 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
             break;
 
           case SDL_CONTROLLER_BUTTON_A:
+            state.a_was_pressed = is_pressed;
             if (state.hotkey_pressed) {
               emitKey(config.a_hk, is_pressed, config.a_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
@@ -1586,6 +1623,7 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
             break;
 
           case SDL_CONTROLLER_BUTTON_B:
+            state.b_was_pressed = is_pressed;
             if (state.hotkey_pressed) {
               emitKey(config.b_hk, is_pressed, config.b_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
@@ -1606,6 +1644,7 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
             break;
 
           case SDL_CONTROLLER_BUTTON_X:
+            state.x_was_pressed = is_pressed;
             if (state.hotkey_pressed) {
               emitKey(config.x_hk, is_pressed, config.x_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
@@ -1626,6 +1665,7 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
             break;
 
           case SDL_CONTROLLER_BUTTON_Y:
+            state.y_was_pressed = is_pressed;
             if (state.hotkey_pressed) {
               emitKey(config.y_hk, is_pressed, config.y_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
@@ -1646,6 +1686,7 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
             break;
 
           case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+            state.l1_was_pressed = is_pressed;
             if (state.hotkey_pressed) {
               emitKey(config.l1_hk, is_pressed, config.l1_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
@@ -1666,6 +1707,7 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
             break;
 
           case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+            state.r1_was_pressed = is_pressed;
             if (state.hotkey_pressed) {
               emitKey(config.r1_hk, is_pressed, config.r1_hk_modifier);
               if (is_pressed) { //keep track of combo button press so it can be released if hotkey is released before this button is released
@@ -1821,6 +1863,25 @@ SDL_GameController* controller = SDL_GameControllerFromInstanceID(event.cdevice.
             }
             break;
         } //switch
+
+        if (is_btntokeyb && state.hotkey_pressed) {
+          if (
+            (state.a_was_pressed && strcmp(btntokeyb_btn,"a")==0) ||
+            (state.b_was_pressed && strcmp(btntokeyb_btn,"b")==0) ||
+            (state.x_was_pressed && strcmp(btntokeyb_btn,"x")==0) ||
+            (state.y_was_pressed && strcmp(btntokeyb_btn,"y")==0) ||
+            (state.l1_was_pressed && strcmp(btntokeyb_btn,"l1")==0) ||
+            (state.l2_was_pressed && strcmp(btntokeyb_btn,"l2")==0) ||
+            (state.r1_was_pressed && strcmp(btntokeyb_btn,"r1")==0) ||
+            (state.r2_was_pressed && strcmp(btntokeyb_btn,"r2")==0))
+          {
+            std::cout << "emitKey: " << btntokeyb_btn << " " << btntokeyb_keyb << std::endl;
+            emitKey(char_to_keycode(btntokeyb_keyb),true,0);
+            SDL_Delay(15);
+            emitKey(char_to_keycode(btntokeyb_keyb),false,0);            
+          }
+        }
+
         if ((kill_mode) && (state.start_pressed && state.hotkey_pressed)) {
           if (pckill_mode) {
             emitKey(KEY_F4,true,KEY_LEFTALT);
@@ -2212,6 +2273,14 @@ int main(int argc, char* argv[])
           kill_signal = atoi(argv[++ii]);
         }
         std::cout << "kill_signal: " << kill_signal << std::endl;
+    } else if (strcmp(argv[ii], "--btntokeyb") == 0) {
+        if (ii + 2 < argc) {
+          is_btntokeyb = true;
+          btntokeyb_btn = argv[++ii];
+          btntokeyb_keyb = argv[++ii];
+        }
+        std::cout << "keypress: " << btntokeyb_btn << std::endl;
+        std::cout << "keyboard_press: " << btntokeyb_keyb << std::endl;
     }
   }
 
